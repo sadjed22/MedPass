@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>User Management - MedPass Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Auth guard — Admin only
+document.documentElement.style.visibility = "hidden";
+let currentAdminProfile = null;
+
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.replace("login_page.html"); return; }
+  try {
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists) { await auth.signOut(); window.location.replace("login_page.html"); return; }
+    const profile = snap.data();
+    if (profile.role !== "Admin" || profile.status === "inactive") {
+      await auth.signOut(); window.location.replace("login_page.html"); return;
+    }
+    currentAdminProfile = profile;
+    document.documentElement.style.visibility = "visible";
+    document.querySelectorAll("[data-user]").forEach(el => {
+      const f = el.getAttribute("data-user");
+      if (profile[f] !== undefined) el.textContent = profile[f];
+    });
+    loadUsers();
+  } catch(e) { window.location.replace("login_page.html"); }
+});
+
+async function logout() { await auth.signOut(); window.location.replace("login_page.html"); }
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;--blue:#3B82F6;--purple:#8B5CF6;
+  --teal:#14B8A6;--red:#EF4444;--orange:#F97316;
+  --text:#1a1a2e;--muted:#6B7280;--border:#E5E7EB;
+  --white:#FFFFFF;--dark:#2B3E50;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);min-height:100vh;}
+
+/* NAVBAR */
+.navbar{background:#fff;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100;}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:20px;font-weight:700;}
+.nav-brand-icon{width:32px;height:32px;background:var(--dark);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;}
+.nav-brand-text{color:var(--dark);letter-spacing:-0.5px;}
+.nav-brand-sub{font-size:11px;color:var(--muted);font-weight:400;display:block;}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.nav-user{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--text);}
+.nav-user-avatar{width:30px;height:30px;background:var(--dark);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.nav-link{display:flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);font-weight:500;font-size:14px;transition:color .2s;}
+.nav-link svg{width:18px;height:18px;}
+.nav-link:hover{color:var(--dark);}
+.btn-logout{display:flex;align-items:center;gap:6px;padding:8px 16px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;}
+.btn-logout:hover{background:#FEE2E2;}
+
+/* MAIN */
+.container{max-width:1400px;margin:0 auto;padding:40px 20px;}
+.dashboard-title{display:inline-block;background:var(--dark);color:#fff;padding:12px 24px;border-radius:12px;font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:24px;}
+.top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;flex-wrap:wrap;gap:16px;}
+.search-box{display:flex;gap:12px;background:#fff;padding:6px 6px 6px 18px;border-radius:40px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.search-box input{border:none;padding:8px;width:240px;font-size:14px;outline:none;font-family:'Inter',sans-serif;}
+.search-box button{background:var(--green);border:none;padding:8px 20px;border-radius:30px;color:#fff;font-weight:600;cursor:pointer;transition:background .2s;}
+.search-box button:hover{background:var(--green-dark);}
+.filter-buttons{display:flex;gap:10px;flex-wrap:wrap;}
+.filter-btn{padding:8px 18px;border:1.5px solid var(--border);border-radius:30px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;color:var(--muted);}
+.filter-btn.active{background:var(--blue);border-color:var(--blue);color:#fff;}
+.filter-btn:hover:not(.active){border-color:#9CA3AF;color:var(--text);}
+.stats-row{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+.stat-card{background:#fff;border-radius:16px;padding:16px 24px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);flex:1;min-width:140px;}
+.stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;}
+.stat-icon.blue{background:rgba(59,130,246,.1);}
+.stat-icon.green{background:rgba(45,201,142,.1);}
+.stat-icon.purple{background:rgba(139,92,246,.1);}
+.stat-icon.orange{background:rgba(249,115,22,.1);}
+.stat-info h3{font-size:24px;font-weight:700;color:var(--text);}
+.stat-info p{font-size:12px;color:var(--muted);font-weight:500;}
+.back-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-weight:500;font-size:14px;cursor:pointer;transition:all .2s;margin-bottom:20px;}
+.back-btn:hover{background:#f9fafb;border-color:var(--muted);}
+
+/* TABLE */
+.table-container{background:#fff;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow-x:auto;}
+.users-table{width:100%;border-collapse:collapse;min-width:900px;}
+.users-table th{padding:18px 20px;text-align:left;background:#F8FAFC;color:var(--text);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);}
+.users-table td{padding:16px 20px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);}
+.users-table tr:hover{background:#F9FAFB;}
+.role-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;}
+.role-badge.admin{background:#FEF2F2;color:#DC2626;}
+.role-badge.hospital{background:#E0F2FE;color:#0369A1;}
+.role-badge.doctor{background:#F0FDF4;color:#16A34A;}
+.role-badge.patient{background:#F5F3FF;color:#7C3AED;}
+.role-badge.pharmacy{background:#FFFBEB;color:#D97706;}
+.role-badge.lab{background:#FCE7F3;color:#BE185D;}
+.role-badge.radiology{background:#E8E8E8;color:#4B5563;}
+.status-active{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#D1FAE5;color:#065F46;}
+.status-inactive{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#FEE2E2;color:#991B1B;}
+.action-btns{display:flex;gap:6px;}
+.btn-icon{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;}
+.btn-edit{background:#F3F4F6;color:var(--text);}
+.btn-edit:hover{background:#E5E7EB;}
+.btn-toggle{background:#FEF3C7;color:#92400E;}
+.btn-toggle:hover{background:#FDE68A;}
+.btn-delete{background:#FEE2E2;color:#DC2626;}
+.btn-delete:hover{background:#FCA5A5;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.active{display:flex;}
+.modal{background:#fff;border-radius:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.2);}
+.modal-header{padding:24px 28px 0;display:flex;align-items:center;justify-content:space-between;}
+.modal-header h2{font-size:20px;font-weight:700;color:var(--text);}
+.modal-close{width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:18px;transition:all .2s;}
+.modal-close:hover{background:#E5E7EB;}
+.modal-body{padding:20px 28px 28px;}
+.form-group{margin-bottom:18px;}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;}
+.form-group input, .form-group select{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;background:#FAFAFA;}
+.form-group input:focus, .form-group select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(45,201,142,.1);}
+.status-toggle{display:flex;align-items:center;justify-content:space-between;padding:12px 0;}
+.toggle{position:relative;width:44px;height:24px;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:#D1D5DB;border-radius:12px;cursor:pointer;transition:.3s;}
+.toggle-slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
+.toggle input:checked + .toggle-slider{background:var(--green);}
+.toggle input:checked + .toggle-slider:before{transform:translateX(20px);}
+.modal-footer{display:flex;gap:12px;padding-top:20px;border-top:1px solid var(--border);margin-top:16px;}
+.btn-cancel{flex:1;padding:12px;background:#F3F4F6;color:var(--text);border:none;border-radius:10px;font-weight:600;cursor:pointer;}
+.btn-save{flex:2;padding:12px;background:linear-gradient(90deg,#2DC98E,#14B8A6);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;}
+.btn-save:disabled{opacity:.6;cursor:not-allowed;}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.empty-state{text-align:center;padding:60px;color:var(--muted);}
+.empty-icon{font-size:52px;margin-bottom:12px;}
+.loading-row td{padding:60px;text-align:center;}
+footer{background:#1a1a2e;color:#fff;padding:40px 20px;margin-top:60px;border-top:1px solid rgba(255,255,255,.1);text-align:center;font-size:14px;color:rgba(255,255,255,.6);}
+@media(max-width:768px){.navbar{padding:16px 20px;}.container{padding:24px 16px;}.top-bar{flex-direction:column;}.search-box{width:100%;}.search-box input{flex:1;}}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="admin_dashboard.html" class="nav-brand">
+    <div class="nav-brand-icon">🛡️</div>
+    <div><div class="nav-brand-text">MedPass</div><span class="nav-brand-sub">Admin Portal</span></div>
+  </a>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-user-avatar">🛡️</div><span data-user="name">…</span></div>
+    <a href="home_page.html" class="nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home</a>
+    <button class="btn-logout" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Logout</button>
+  </div>
+</nav>
+
+<div class="container">
+  <a href="admin_dashboard.html" class="back-btn">← Back</a>
+  <div class="dashboard-title">👥 User Management</div>
+
+  <div class="stats-row" id="statsRow">
+  <div class="stat-card"><div class="stat-icon blue">👤</div><div class="stat-info"><h3 id="totalUsers">0</h3><p>Total Users</p></div></div>
+  <div class="stat-card"><div class="stat-icon green">🟢</div><div class="stat-info"><h3 id="activeUsers">0</h3><p>Active</p></div></div>
+  <div class="stat-card"><div class="stat-icon purple">🏥</div><div class="stat-info"><h3 id="hospitalCount">0</h3><p>Hospitals</p></div></div>
+  <div class="stat-card"><div class="stat-icon orange">👤</div><div class="stat-info"><h3 id="patientCount">0</h3><p>Patients</p></div></div>
+  <div class="stat-card"><div class="stat-icon teal">👨‍⚕️</div><div class="stat-info"><h3 id="doctorCount">0</h3><p>Doctors</p></div></div>
+  <div class="stat-card"><div class="stat-icon pink">💊</div><div class="stat-info"><h3 id="pharmacyCount">0</h3><p>Pharmacies</p></div></div>
+  <div class="stat-card"><div class="stat-icon indigo">🧪</div><div class="stat-info"><h3 id="labCount">0</h3><p>Blood Labs</p></div></div>
+  <div class="stat-card"><div class="stat-icon cyan">📷</div><div class="stat-info"><h3 id="radiologyCount">0</h3><p>Radiology</p></div></div>
+</div>
+
+  <div class="top-bar">
+    <div class="search-box"><input type="text" id="searchInput" placeholder="Search by name or email..." onkeyup="searchUsers()"/><button onclick="searchUsers()">🔍 Search</button></div>
+    <div class="filter-buttons">
+    <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" data-filter="Admin" onclick="setFilter('Admin',this)">🛡️ Admins</button>
+    <button class="filter-btn" data-filter="Hospital" onclick="setFilter('Hospital',this)">🏥 Hospitals</button>
+    <button class="filter-btn" data-filter="Doctor" onclick="setFilter('Doctor',this)">👨‍⚕️ Doctors</button>
+    <button class="filter-btn" data-filter="Patient" onclick="setFilter('Patient',this)">👤 Patients</button>
+    <button class="filter-btn" data-filter="Pharmacy" onclick="setFilter('Pharmacy',this)">💊 Pharmacies</button>
+    <button class="filter-btn" data-filter="Blood Analysis Center" onclick="setFilter('Blood Analysis Center',this)">🧪 Labs</button>
+    <button class="filter-btn" data-filter="Radiology Center" onclick="setFilter('Radiology Center',this)">📷 Radiology</button>
+</div>  
+  </div>
+
+  <div class="table-container"><table class="users-table" id="usersTable"><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="tableBody"><tr class="loading-row"><td colspan="6">Loading users...</td></tr></tbody></table></div>
+</div>
+
+<footer><p>© 2026 MedPass. All rights reserved.</p></footer>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal"><div class="modal"><div class="modal-header"><h2>✏️ Edit User</h2><button class="modal-close" onclick="closeEditModal()">✕</button></div><div class="modal-body"><div class="form-group"><label>Full Name</label><input type="text" id="editName"/></div><div class="form-group"><label>Email</label><input type="email" id="editEmail" disabled style="background:#F3F4F6;"/></div><div class="form-group"><label>Phone</label><input type="tel" id="editPhone"/></div><div class="form-group"><label>Role</label><select id="editRole"><option value="Admin">🛡️ Admin</option><option value="Hospital">🏥 Hospital</option><option value="Doctor">👨‍⚕️ Doctor</option><option value="Patient">👤 Patient</option><option value="Pharmacy">💊 Pharmacy</option><option value="Blood Analysis Center">🧪 Lab</option><option value="Radiology Center">📷 Radiology</option></select></div><div class="status-toggle"><span>Account Status</span><label class="toggle"><input type="checkbox" id="editStatus"/><span class="toggle-slider"></span></label></div><div class="modal-footer"><button class="btn-cancel" onclick="closeEditModal()">Cancel</button><button class="btn-save" id="saveBtn" onclick="saveUser()">Save Changes</button></div></div></div></div>
+
+<div class="toast" id="toast" style="position:fixed;bottom:28px;right:28px;background:#1a1a2e;color:#fff;padding:14px 20px;border-radius:12px;z-index:999;display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:all .4s;min-width:260px;"></div>
+
+<script>
+let allUsers = [];
+let currentFilter = 'all';
+let currentSearch = '';
+let editingUser = null;
+
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  t.className = '';
+  t.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  t.style.transform = 'translateY(0)';
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 4000);
+}
+
+async function loadUsers() {
+  try {
+    const snap = await db.collection('users').get();
+    allUsers = snap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+    updateStats();
+    renderTable();
+  } catch(err) { document.getElementById('tableBody').innerHTML = `<tr><td colspan="6">Error loading users: ${err.message}</td></tr>`; }
+}
+
+function updateStats() {
+  document.getElementById('totalUsers').textContent = allUsers.length;
+  document.getElementById('activeUsers').textContent = allUsers.filter(u => u.status === 'active').length;
+  document.getElementById('hospitalCount').textContent = allUsers.filter(u => u.role === 'Hospital').length;
+  document.getElementById('patientCount').textContent = allUsers.filter(u => u.role === 'Patient').length;
+  document.getElementById('doctorCount').textContent = allUsers.filter(u => u.role === 'Doctor').length;
+  document.getElementById('pharmacyCount').textContent = allUsers.filter(u => u.role === 'Pharmacy').length;
+  document.getElementById('labCount').textContent = allUsers.filter(u => u.role === 'Blood Analysis Center').length;
+  document.getElementById('radiologyCount').textContent = allUsers.filter(u => u.role === 'Radiology Center').length;
+}
+
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function searchUsers() {
+  currentSearch = document.getElementById('searchInput').value.toLowerCase();
+  renderTable();
+}
+
+function renderTable() {
+  let filtered = allUsers.filter(u => currentFilter === 'all' || u.role === currentFilter);
+  if (currentSearch) filtered = filtered.filter(u => u.name?.toLowerCase().includes(currentSearch) || u.email?.toLowerCase().includes(currentSearch));
+  
+  const tbody = document.getElementById('tableBody');
+  if (filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><div>No users found</div></div></td></tr>`; return; }
+  
+  tbody.innerHTML = filtered.map(u => `
+    <tr>
+      <td><strong>${u.name || '—'}</strong><br><span style="font-size:11px;color:var(--muted);">${u.phone || 'No phone'}</span></td>
+      <td style="font-size:12px;">${u.email || '—'}</td>
+      <td>${getRoleBadge(u.role)}</td>
+      <td>${u.status === 'active' ? '<span class="status-active">🟢 Active</span>' : '<span class="status-inactive">🔴 Inactive</span>'}</td>
+      <td style="font-size:12px;">${formatDate(u.createdAt)}</td>
+      <td><div class="action-btns"><button class="btn-icon btn-edit" onclick="openEditModal('${u.uid}')">✏️ Edit</button><button class="btn-icon btn-toggle" onclick="toggleStatus('${u.uid}')">${u.status === 'active' ? '🔴 Deactivate' : '🟢 Activate'}</button><button class="btn-icon btn-delete" onclick="deleteUser('${u.uid}')">🗑️ Delete</button></div></td>
+    </tr>
+  `).join('');
+}
+
+function getRoleBadge(role) {
+  const icons = { Admin:'🛡️', Hospital:'🏥', Doctor:'👨‍⚕️', Patient:'👤', Pharmacy:'💊', 'Blood Analysis Center':'🧪', 'Radiology Center':'📷' };
+  const classes = { Admin:'admin', Hospital:'hospital', Doctor:'doctor', Patient:'patient', Pharmacy:'pharmacy', 'Blood Analysis Center':'lab', 'Radiology Center':'radiology' };
+  return `<span class="role-badge ${classes[role] || ''}">${icons[role] || '📌'} ${role}</span>`;
+}
+
+function formatDate(timestamp) { if (!timestamp) return '—'; const d = timestamp.toDate ? timestamp.toDate() : new Date(timestamp); return d.toLocaleDateString('en-GB'); }
+
+function openEditModal(uid) {
+  editingUser = allUsers.find(u => u.uid === uid);
+  if (!editingUser) return;
+  document.getElementById('editName').value = editingUser.name || '';
+  document.getElementById('editEmail').value = editingUser.email || '';
+  document.getElementById('editPhone').value = editingUser.phone || '';
+  document.getElementById('editRole').value = editingUser.role || 'Patient';
+  document.getElementById('editStatus').checked = editingUser.status === 'active';
+  document.getElementById('editModal').classList.add('active');
+}
+
+function closeEditModal() { document.getElementById('editModal').classList.remove('active'); editingUser = null; }
+
+async function saveUser() {
+  if (!editingUser) return;
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Saving...';
+  try {
+    await db.collection('users').doc(editingUser.uid).update({
+      name: document.getElementById('editName').value.trim(),
+      phone: document.getElementById('editPhone').value.trim(),
+      role: document.getElementById('editRole').value,
+      status: document.getElementById('editStatus').checked ? 'active' : 'inactive'
+    });
+    const index = allUsers.findIndex(u => u.uid === editingUser.uid);
+    if (index !== -1) allUsers[index] = { ...allUsers[index], name: document.getElementById('editName').value.trim(), phone: document.getElementById('editPhone').value.trim(), role: document.getElementById('editRole').value, status: document.getElementById('editStatus').checked ? 'active' : 'inactive' };
+    updateStats();
+    renderTable();
+    showToast('User updated successfully!', 'success');
+    closeEditModal();
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = 'Save Changes'; }
+}
+
+async function toggleStatus(uid) {
+  const user = allUsers.find(u => u.uid === uid);
+  if (!user) return;
+  const newStatus = user.status === 'active' ? 'inactive' : 'active';
+  try {
+    await db.collection('users').doc(uid).update({ status: newStatus });
+    user.status = newStatus;
+    updateStats();
+    renderTable();
+    showToast(`User ${newStatus === 'active' ? 'activated' : 'deactivated'}`, 'success');
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+async function deleteUser(uid) {
+  if (!confirm('⚠️ Are you sure? This will delete the user from Firestore (Auth account remains). This action cannot be undone.')) return;
+  try {
+    await db.collection('users').doc(uid).delete();
+    allUsers = allUsers.filter(u => u.uid !== uid);
+    updateStats();
+    renderTable();
+    showToast('User deleted from Firestore.', 'success');
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Register New Patient - MedPass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const storage = firebase.storage();
+
+// Auth guard — only Hospital role
+document.documentElement.style.visibility = "hidden";
+let currentHospitalName = "Unknown Hospital";
+let currentHospitalUid  = null;
+
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.replace("login_page.html"); return; }
+  try {
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists) { await auth.signOut(); window.location.replace("login_page.html"); return; }
+    const profile = snap.data();
+    if (profile.role !== "Hospital" || profile.status === "inactive") {
+      await auth.signOut(); window.location.replace("login_page.html"); return;
+    }
+    currentHospitalName = profile.name || profile.hospitalName || "Unknown Hospital";
+    currentHospitalUid  = user.uid;
+    document.getElementById("hospitalNameDisplay").textContent = currentHospitalName;
+    document.documentElement.style.visibility = "visible";
+  } catch(e) { window.location.replace("login_page.html"); }
+});
+
+async function logout() { await auth.signOut(); window.location.replace("login_page.html"); }
+
+// Add blood test entry
+function addBloodTest() {
+  const container = document.getElementById('bloodTestsContainer');
+  const index = container.children.length;
+  const div = document.createElement('div');
+  div.className = 'blood-test-entry';
+  div.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <strong style="font-size:14px;">Blood Test #${index + 1}</strong>
+      <button type="button" onclick="this.closest('.blood-test-entry').remove()" style="background:#FEE2E2; color:#DC2626; border:none; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:12px;">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Test Name *</label>
+        <input type="text" class="blood-test-name" placeholder="e.g., Complete Blood Count"/>
+      </div>
+      <div class="form-group">
+        <label>Test Date *</label>
+        <input type="date" class="blood-test-date"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Lab Name</label>
+        <input type="text" class="blood-test-lab" placeholder="Lab name"/>
+      </div>
+      <div class="form-group">
+        <label>Result</label>
+        <input type="text" class="blood-test-result" placeholder="e.g., Normal / Abnormal"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Reference Range (Optional)</label>
+      <input type="text" class="blood-test-range" placeholder="e.g., 4.5-11.0 K/uL"/>
+    </div>
+    <hr style="margin:16px 0; border-color:var(--border);"/>
+  `;
+  container.appendChild(div);
+}
+
+// Add radiology entry
+function addRadiology() {
+  const container = document.getElementById('radiologyContainer');
+  const index = container.children.length;
+  const div = document.createElement('div');
+  div.className = 'radiology-entry';
+  div.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <strong style="font-size:14px;">Radiology Report #${index + 1}</strong>
+      <button type="button" onclick="this.closest('.radiology-entry').remove()" style="background:#FEE2E2; color:#DC2626; border:none; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:12px;">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Examination Type *</label>
+        <input type="text" class="radiology-type" placeholder="e.g., Chest X-Ray, MRI, CT Scan"/>
+      </div>
+      <div class="form-group">
+        <label>Examination Date *</label>
+        <input type="date" class="radiology-date"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Radiology Center</label>
+        <input type="text" class="radiology-center" placeholder="Center name"/>
+      </div>
+      <div class="form-group">
+        <label>Finding</label>
+        <input type="text" class="radiology-finding" placeholder="e.g., Normal / Abnormal finding"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Technique (Optional)</label>
+      <input type="text" class="radiology-technique" placeholder="e.g., PA and Lateral views"/>
+    </div>
+    <hr style="margin:16px 0; border-color:var(--border);"/>
+  `;
+  container.appendChild(div);
+}
+
+// Add medical record entry
+function addMedicalRecord() {
+  const container = document.getElementById('medicalRecordsContainer');
+  const index = container.children.length;
+  const div = document.createElement('div');
+  div.className = 'medical-record-entry';
+  div.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <strong style="font-size:14px;">Medical Record #${index + 1}</strong>
+      <button type="button" onclick="this.closest('.medical-record-entry').remove()" style="background:#FEE2E2; color:#DC2626; border:none; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:12px;">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Doctor Name *</label>
+        <input type="text" class="medical-doctor" placeholder="Doctor's name"/>
+      </div>
+      <div class="form-group">
+        <label>Specialty</label>
+        <input type="text" class="medical-specialty" placeholder="e.g., Cardiology"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date *</label>
+        <input type="date" class="medical-date"/>
+      </div>
+      <div class="form-group">
+        <label>Diagnosis</label>
+        <input type="text" class="medical-diagnosis" placeholder="Diagnosis"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes (Optional)</label>
+      <textarea class="medical-notes" rows="3" placeholder="Additional notes..."></textarea>
+    </div>
+    <hr style="margin:16px 0; border-color:var(--border);"/>
+  `;
+  container.appendChild(div);
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;--blue:#3B82F6;--purple:#8B5CF6;
+  --teal:#14B8A6;--red:#EF4444;--text:#1a1a2e;
+  --muted:#6B7280;--border:#E5E7EB;--white:#FFFFFF;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);min-height:100vh;margin:0;padding:0;}
+
+/* NAVBAR */
+.navbar{background:#fff;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100;}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:20px;font-weight:700;}
+.nav-brand-icon{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;}
+.nav-brand-text{color:var(--green);letter-spacing:-0.5px;}
+.nav-brand-sub{font-size:11px;color:var(--muted);font-weight:400;display:block;}
+.nav-right{display:flex;align-items:center;gap:20px;}
+.nav-link{display:flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);font-weight:500;font-size:14px;transition:color .2s;}
+.nav-link:hover{color:var(--green);}
+.btn-logout{display:flex;align-items:center;gap:6px;padding:8px 16px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s;}
+.btn-logout:hover{background:#FEE2E2;}
+
+/* MAIN */
+.container{max-width:1200px;margin:0 auto;padding:40px 20px;}
+.page-header{margin-bottom:32px;}
+.back-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-weight:500;font-size:14px;cursor:pointer;transition:all .2s;margin-bottom:20px;}
+.back-btn:hover{background:#f9fafb;border-color:var(--muted);}
+.page-title{display:inline-block;background:var(--green);color:#fff;padding:12px 24px;border-radius:12px;font-size:20px;font-weight:700;letter-spacing:-0.5px;}
+
+/* HOSPITAL TAG */
+.hospital-tag{display:inline-flex;align-items:center;gap:8px;background:#F0FDF9;border:1px solid #A7F3D0;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:#065F46;margin-top:12px;}
+
+/* FORM CARD */
+.form-card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:40px;}
+.form-section{margin-bottom:32px;}
+.section-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+.form-row.full{grid-template-columns:1fr;}
+.form-row.three{grid-template-columns:1fr 1fr 1fr;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group label{font-size:13px;font-weight:600;color:var(--text);}
+.form-group label .opt{font-size:11px;color:var(--muted);font-weight:400;margin-left:4px;}
+.form-group input,
+.form-group select,
+.form-group textarea{
+  padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;
+  font-size:14px;font-family:'Inter',sans-serif;background:#fafafa;
+  color:var(--text);transition:all .2s;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{
+  outline:none;background:#fff;border-color:var(--green);
+  box-shadow:0 0 0 3px rgba(45,201,142,.1);
+}
+.form-group input.error,
+.form-group select.error{border-color:var(--red);}
+.form-group textarea{resize:vertical;min-height:90px;}
+
+/* PASSWORD HINT */
+.form-hint{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* BLOOD PILLS */
+.blood-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.blood-pill{padding:9px 4px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;text-align:center;font-size:13px;font-weight:700;color:var(--muted);background:#fff;transition:all .18s;}
+.blood-pill:hover{border-color:#9CA3AF;color:var(--text);}
+.blood-pill.selected{border-color:#EF4444;background:#FFF1F2;color:#B91C1C;}
+
+/* ADD BUTTONS */
+.add-btn{background:var(--blue);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:8px;}
+.add-btn:hover{background:#2563EB;transform:translateY(-1px);}
+
+/* ENTRY STYLES */
+.blood-test-entry, .radiology-entry, .medical-record-entry{background:#fafafa;padding:20px;border-radius:12px;margin-bottom:20px;}
+
+/* SUBMIT */
+.submit-btn{background:linear-gradient(90deg,#2DC98E 0%,#14B8A6 100%);color:#fff;border:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .3s;width:100%;box-shadow:0 4px 15px rgba(45,201,142,.2);display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Inter',sans-serif;margin-top:20px;}
+.submit-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(45,201,142,.3);}
+.submit-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* SUCCESS BANNER */
+.success-banner{display:none;background:#F0FDF9;border:1px solid #A7F3D0;border-radius:14px;padding:24px;text-align:center;margin-bottom:24px;}
+.success-banner.visible{display:block;}
+.success-banner .si{font-size:42px;margin-bottom:8px;}
+.success-banner h3{font-size:18px;font-weight:700;color:#065F46;margin-bottom:4px;}
+.success-banner p{font-size:14px;color:#047857;}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;background:#1a1a2e;color:#fff;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.2);z-index:999;display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1);min-width:260px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-left:4px solid var(--green);}
+.toast.error{border-left:4px solid var(--red);}
+
+@media(max-width:768px){
+  .navbar{padding:16px 20px;}
+  .container{padding:20px 16px;}
+  .form-card{padding:24px 18px;}
+  .form-row,.form-row.three{grid-template-columns:1fr;}
+  .blood-grid{grid-template-columns:repeat(4,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="hospital_dashboard.html" class="nav-brand">
+    <div class="nav-brand-icon">🏥</div>
+    <div>
+      <div class="nav-brand-text">MedPass</div>
+      <span class="nav-brand-sub">Hospital Portal</span>
+    </div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </a>
+    <button class="btn-logout" onclick="logout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </button>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <a href="hospital_dashboard.html" class="back-btn">← Back to Dashboard</a>
+    <div class="page-title">👥 Register New Patient</div>
+    <div class="hospital-tag">🏥 <span id="hospitalNameDisplay">Loading…</span></div>
+  </div>
+
+  <!-- SUCCESS BANNER -->
+  <div class="success-banner" id="successBanner">
+    <div class="si">✅</div>
+    <h3>Registration request submitted!</h3>
+    <p>The admin will review and approve this request. The patient account and card will be generated upon approval.</p>
+  </div>
+
+  <div class="form-card" id="formCard">
+
+    <!-- PERSONAL INFO -->
+    <div class="form-section">
+      <div class="section-label">Personal Information</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name *</label>
+          <input type="text" id="firstName" placeholder="First name"/>
+        </div>
+        <div class="form-group">
+          <label>Last Name *</label>
+          <input type="text" id="lastName" placeholder="Last name"/>
+        </div>
+      </div>
+      <div class="form-row three">
+        <div class="form-group">
+          <label>Date of Birth *</label>
+          <input type="date" id="dob"/>
+        </div>
+        <div class="form-group">
+          <label>Age</label>
+          <input type="number" id="age" placeholder="Auto" readonly style="background:#F3F4F6;cursor:default;"/>
+        </div>
+        <div class="form-group">
+          <label>Gender <span class="opt">(optional)</span></label>
+          <select id="gender">
+            <option value="">Select…</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- BLOOD TYPE -->
+    <div class="form-section">
+      <div class="section-label">Blood Type</div>
+      <div class="blood-grid" id="bloodGrid">
+        <div class="blood-pill" onclick="selectBlood(this)" data-val="A+">A+</div>
+        <div class="blood-pill" onclick="selectBlood(this)" data-val="A−">A−</div>
+        <div class="blood-pill" onclick="selectBlood(this)" data-val="B+">B+</div>
+        <div class="blood-pill" onclick="selectBlood(this)" data-val="B−">B−</div>
+        <div class="blood-pill" onclick="selectBlood(this)" data-val="AB+">AB+</div>
+        <div class="blood-pill" onclick="selectBlood(this)" data-val="AB−">AB−</div>
+        <div class="blood-pill" onclick="selectBlood(this)" data-val="O+">O+</div>
+        <div class="blood-pill" onclick="selectBlood(this)" data-val="O−">O−</div>
+      </div>
+    </div>
+
+    <!-- CONTACT -->
+    <div class="form-section">
+      <div class="section-label">Contact & Account</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email Address *</label>
+          <input type="email" id="email" placeholder="patient@example.com"/>
+        </div>
+        <div class="form-group">
+          <label>Temporary Password *</label>
+          <input type="password" id="password" placeholder="Min. 6 characters"/>
+          <span class="form-hint">Patient can reset via "Forgot Password" on login.</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone Number *</label>
+          <input type="tel" id="phone" placeholder="+213 555 000 000"/>
+        </div>
+        <div class="form-group">
+          <label>Relative's Phone <span class="opt">(optional)</span></label>
+          <input type="tel" id="relativePhone" placeholder="+213 555 111 111"/>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Address <span class="opt">(optional)</span></label>
+          <textarea id="address" placeholder="Full address…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEDICAL NOTES -->
+    <div class="form-section">
+      <div class="section-label">Medical Notes</div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Chronic Diseases <span class="opt">(optional)</span></label>
+          <textarea id="diseases" placeholder="e.g. Type 2 Diabetes, Hypertension…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- BLOOD TEST RECORDS -->
+    <div class="form-section">
+      <div class="section-label">🩸 Blood Test Records <span style="font-size:11px;color:var(--muted);text-transform:none;"> — optional</span></div>
+      <div id="bloodTestsContainer"></div>
+      <button type="button" class="add-btn" onclick="addBloodTest()">+ Add Blood Test</button>
+    </div>
+
+    <!-- RADIOLOGY REPORTS -->
+    <div class="form-section">
+      <div class="section-label">🩻 Radiology Reports <span style="font-size:11px;color:var(--muted);text-transform:none;"> — optional</span></div>
+      <div id="radiologyContainer"></div>
+      <button type="button" class="add-btn" onclick="addRadiology()">+ Add Radiology Report</button>
+    </div>
+
+    <!-- MEDICAL RECORDS -->
+    <div class="form-section">
+      <div class="section-label">📋 Medical Records <span style="font-size:11px;color:var(--muted);text-transform:none;"> — optional</span></div>
+      <div id="medicalRecordsContainer"></div>
+      <button type="button" class="add-btn" onclick="addMedicalRecord()">+ Add Medical Record</button>
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="submitRequest()">
+      <span id="submitText">Submit Registration Request</span>
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let selectedBlood = null;
+
+// Auto-calculate age
+document.getElementById('dob').addEventListener('change', function() {
+  const dob = new Date(this.value);
+  if (isNaN(dob)) { document.getElementById('age').value = ''; return; }
+  const today = new Date();
+  let a = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
+  document.getElementById('age').value = a >= 0 ? a : '';
+});
+
+function selectBlood(el) {
+  document.querySelectorAll('.blood-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedBlood = el.dataset.val;
+}
+
+function markErr(id) { document.getElementById(id)?.classList.add('error'); }
+function clearErr(id) { document.getElementById(id)?.classList.remove('error'); }
+
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 5000);
+}
+
+async function submitRequest() {
+  // Gather basic info
+  const firstName = document.getElementById('firstName').value.trim();
+  const lastName = document.getElementById('lastName').value.trim();
+  const dob = document.getElementById('dob').value;
+  const age = document.getElementById('age').value;
+  const gender = document.getElementById('gender').value;
+  const bloodType = selectedBlood;
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const phone = document.getElementById('phone').value.trim();
+  const relPhone = document.getElementById('relativePhone').value.trim();
+  const address = document.getElementById('address').value.trim();
+  const diseases = document.getElementById('diseases').value.trim();
+
+  // Validate
+  let valid = true;
+  ['firstName','lastName','dob','email','password','phone'].forEach(id => clearErr(id));
+
+  if (!firstName) { markErr('firstName'); valid = false; }
+  if (!lastName) { markErr('lastName'); valid = false; }
+  if (!dob) { markErr('dob'); valid = false; }
+  if (!email) { markErr('email'); valid = false; }
+  if (!password || password.length < 6) { markErr('password'); valid = false; }
+  if (!phone) { markErr('phone'); valid = false; }
+
+  if (!bloodType) { showToast('Please select a blood type.', 'error'); return; }
+  if (!valid) { showToast('Please fill in all required fields.', 'error'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  document.getElementById('submitText').innerHTML = '<div class="spinner"></div> Submitting…';
+
+  try {
+    const reqId = 'REQ-' + Date.now().toString(36).toUpperCase();
+
+    // Collect blood tests
+    const bloodTests = [];
+    const bloodEntries = document.querySelectorAll('.blood-test-entry');
+    for (let i = 0; i < bloodEntries.length; i++) {
+      const entry = bloodEntries[i];
+      const testName = entry.querySelector('.blood-test-name')?.value.trim();
+      const testDate = entry.querySelector('.blood-test-date')?.value;
+      const labName = entry.querySelector('.blood-test-lab')?.value.trim();
+      const result = entry.querySelector('.blood-test-result')?.value.trim();
+      const referenceRange = entry.querySelector('.blood-test-range')?.value.trim();
+      
+      if (testName && testDate) {
+        bloodTests.push({
+          testName: testName,
+          date: testDate,
+          labName: labName || 'Not specified',
+          result: result || 'Pending',
+          referenceRange: referenceRange || '',
+          addedAt: new Date().toISOString(),
+          addedBy: currentHospitalUid
+        });
+      }
+    }
+    
+    // Collect radiology reports
+    const radiologyReports = [];
+    const radiologyEntries = document.querySelectorAll('.radiology-entry');
+    for (let i = 0; i < radiologyEntries.length; i++) {
+      const entry = radiologyEntries[i];
+      const examType = entry.querySelector('.radiology-type')?.value.trim();
+      const examDate = entry.querySelector('.radiology-date')?.value;
+      const centerName = entry.querySelector('.radiology-center')?.value.trim();
+      const finding = entry.querySelector('.radiology-finding')?.value.trim();
+      const technique = entry.querySelector('.radiology-technique')?.value.trim();
+      
+      if (examType && examDate) {
+        radiologyReports.push({
+          examType: examType,
+          date: examDate,
+          centerName: centerName || 'Not specified',
+          finding: finding || 'Pending',
+          technique: technique || '',
+          addedAt: new Date().toISOString(),
+          addedBy: currentHospitalUid
+        });
+      }
+    }
+    
+    // Collect medical records
+    const medicalRecords = [];
+    const medicalEntries = document.querySelectorAll('.medical-record-entry');
+    for (let i = 0; i < medicalEntries.length; i++) {
+      const entry = medicalEntries[i];
+      const doctorName = entry.querySelector('.medical-doctor')?.value.trim();
+      const specialty = entry.querySelector('.medical-specialty')?.value.trim();
+      const recordDate = entry.querySelector('.medical-date')?.value;
+      const diagnosis = entry.querySelector('.medical-diagnosis')?.value.trim();
+      const notes = entry.querySelector('.medical-notes')?.value.trim();
+      
+      if (doctorName && recordDate) {
+        medicalRecords.push({
+          doctorName: doctorName,
+          specialty: specialty || 'General',
+          date: recordDate,
+          diagnosis: diagnosis || 'Not specified',
+          notes: notes || '',
+          addedAt: new Date().toISOString(),
+          addedBy: currentHospitalUid
+        });
+      }
+    }
+
+    // Create patient request document
+    await db.collection('patientRequests').doc(reqId).set({
+      reqId: reqId,
+      status: 'pending',
+      submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      
+      // Hospital info
+      hospitalUid: currentHospitalUid,
+      hospitalName: currentHospitalName,
+      
+      // Patient basic info
+      firstName: firstName,
+      lastName: lastName,
+      name: `${firstName} ${lastName}`,
+      dob: dob,
+      age: parseInt(age) || null,
+      gender: gender || '',
+      bloodType: bloodType,
+      email: email,
+      password: password,
+      phone: phone,
+      relativePhone: relPhone || '',
+      address: address || '',
+      chronicDiseases: diseases || 'None',
+      
+      // ALL THREE MEDICAL RECORD TYPES
+      bloodTests: bloodTests,
+      radiologyReports: radiologyReports,
+      medicalRecords: medicalRecords,
+      
+      // Metadata
+      hasBloodTests: bloodTests.length > 0,
+      hasRadiologyReports: radiologyReports.length > 0,
+      hasMedicalRecords: medicalRecords.length > 0,
+      createdAt: new Date().toISOString()
+    });
+    
+    console.log('Patient request submitted:', reqId);
+    console.log('Blood tests saved:', bloodTests.length);
+    console.log('Radiology reports saved:', radiologyReports.length);
+    console.log('Medical records saved:', medicalRecords.length);
+
+    // Show success
+    document.getElementById('formCard').style.display = 'none';
+    document.getElementById('successBanner').classList.add('visible');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    showToast(`Registration request submitted with ${bloodTests.length} blood tests, ${radiologyReports.length} radiology reports, and ${medicalRecords.length} medical records!`, 'success');
+
+  } catch(err) {
+    console.error('Submission error:', err);
+    btn.disabled = false;
+    document.getElementById('submitText').textContent = 'Submit Registration Request';
+    showToast('Error: ' + (err.message || err.code), 'error');
+  }
+}
+</script>
+</body>
+</html>

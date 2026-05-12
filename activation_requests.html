@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Activation Requests - MedPass Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;
+  --blue:#3B82F6;
+  --purple:#8B5CF6;
+  --teal:#14B8A6;
+  --red:#EF4444;
+  --text:#1a1a2e;
+  --muted:#6B7280;
+  --border:#E5E7EB;
+  --white:#FFFFFF;
+}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);
+  min-height:100vh;
+  margin:0;
+  padding:0;
+}
+
+/* ── NAVBAR ── */
+.navbar{
+  background:#fff;
+  padding:16px 40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+
+.nav-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-decoration:none;
+  font-size:20px;
+  font-weight:700;
+}
+
+.nav-brand-icon{
+  width:32px;
+  height:32px;
+  background:#2B3E50;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:18px;
+}
+
+.nav-brand-text{
+  color:#2B3E50;
+  letter-spacing:-0.5px;
+}
+
+.nav-brand-sub{
+  font-size:11px;
+  color:var(--muted);
+  font-weight:400;
+  display:block;
+}
+
+.nav-right{
+  display:flex;
+  align-items:center;
+  gap:24px;
+}
+
+.nav-link{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  text-decoration:none;
+  color:var(--text);
+  font-weight:500;
+  font-size:14px;
+  transition:color .2s;
+}
+
+.nav-link:hover{
+  color:#2B3E50;
+}
+
+/* ── MAIN CONTENT ── */
+.container{
+  max-width:1000px;
+  margin:0 auto;
+  padding:40px 20px;
+}
+
+.page-header{
+  margin-bottom:40px;
+}
+
+.back-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 16px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:10px;
+  color:var(--text);
+  text-decoration:none;
+  font-weight:500;
+  font-size:14px;
+  cursor:pointer;
+  transition:all .2s;
+  margin-bottom:20px;
+}
+
+.back-btn:hover{
+  background:#f9fafb;
+  border-color:var(--muted);
+}
+
+.page-title{
+  display:inline-block;
+  background:var(--green);
+  color:#fff;
+  padding:12px 24px;
+  border-radius:12px;
+  font-size:20px;
+  font-weight:700;
+  letter-spacing:-0.5px;
+}
+
+/* ── NOTE BOX ── */
+.note-box{
+  background:rgba(45,201,142,.05);
+  border-left:4px solid var(--green);
+  padding:14px;
+  border-radius:8px;
+  margin-bottom:32px;
+  font-size:13px;
+  color:var(--text);
+}
+
+/* ── SECTION TITLE ── */
+.section-title{
+  font-size:18px;
+  font-weight:700;
+  color:var(--text);
+  margin:32px 0 20px 0;
+  padding-bottom:12px;
+  border-bottom:2px solid var(--border);
+}
+
+/* ── ACTIVATION CARD ── */
+.activation-card{
+  background:#fff;
+  border-radius:14px;
+  padding:20px;
+  margin-bottom:16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  transition:all .2s;
+}
+
+.activation-card:hover{
+  box-shadow:0 4px 12px rgba(0,0,0,.1);
+}
+
+.activation-icon{
+  font-size:32px;
+  min-width:50px;
+  text-align:center;
+}
+
+.activation-content{
+  flex:1;
+}
+
+.activation-id{
+  font-size:14px;
+  font-weight:600;
+  color:var(--blue);
+  margin-bottom:6px;
+}
+
+.activation-type{
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:8px;
+}
+
+.activation-details{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:16px;
+  font-size:12px;
+  margin-bottom:8px;
+}
+
+.detail-item{
+  display:flex;
+  flex-direction:column;
+}
+
+.detail-label{
+  color:var(--muted);
+  font-weight:500;
+  margin-bottom:2px;
+}
+
+.detail-value{
+  color:var(--text);
+  font-weight:600;
+}
+
+.activation-status{
+  padding:4px 12px;
+  border-radius:6px;
+  font-size:12px;
+  font-weight:600;
+  width:fit-content;
+}
+
+.status-pending{
+  background:rgba(245,158,11,.1);
+  color:#D97706;
+}
+
+.status-activated{
+  background:rgba(45,201,142,.1);
+  color:var(--green);
+}
+
+.activation-actions{
+  display:flex;
+  gap:8px;
+  flex-shrink:0;
+}
+
+.btn-activate{
+  background:var(--green);
+  color:#fff;
+  border:none;
+  padding:8px 16px;
+  border-radius:8px;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .2s;
+}
+
+.btn-activate:hover{
+  background:#24a67a;
+  transform:translateY(-2px);
+}
+
+.btn-activate:disabled{
+  background:var(--muted);
+  cursor:not-allowed;
+  transform:none;
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .activation-detail{
+    grid-template-columns:1fr;
+  }
+  
+  .activation-card{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  
+  .activation-actions{
+    width:100%;
+  }
+  
+  .btn-activate{
+    width:100%;
+    text-align:center;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="#" class="nav-brand" onclick="goHome(event)">
+    <div class="nav-brand-icon">🛡️</div>
+    <div>
+      <div class="nav-brand-text">MedPass</div>
+      <span class="nav-brand-sub">Admin Portal</span>
+    </div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">Home</a>
+    <a href="login_page.html" class="nav-link">Logout</a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="container">
+  <div class="page-header">
+    <a href="admin_dashboard.html" class="back-btn">← Back</a>
+    <div class="page-title">✅ Activation Requests</div>
+  </div>
+
+  <div class="note-box">
+    <strong>Note:</strong> Process card and service activation requests after payment confirmation
+  </div>
+
+  <!-- PATIENT CARD ACTIVATIONS -->
+  <h3 class="section-title">🩳 Patient Card Activation Requests</h3>
+
+  <div class="activation-card">
+    <div class="activation-icon">✅</div>
+    <div class="activation-content">
+      <div class="activation-id">MP-123456</div>
+      <div class="activation-type">Patient</div>
+      <div class="activation-details">
+        <div class="detail-item">
+          <span class="detail-label">Name:</span>
+          <span class="detail-value">Alice Brown</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Payment Date:</span>
+          <span class="detail-value">2026-04-07</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Amount:</span>
+          <span class="detail-value">$99</span>
+        </div>
+      </div>
+      <div class="activation-status status-pending">Pending Activation</div>
+    </div>
+    <div class="activation-actions">
+      <button class="btn-activate" onclick="activateCard('MP-123456')">Activate Card</button>
+    </div>
+  </div>
+
+  <div class="activation-card">
+    <div class="activation-icon">✅</div>
+    <div class="activation-content">
+      <div class="activation-id">MP-789012</div>
+      <div class="activation-type">Patient</div>
+      <div class="activation-details">
+        <div class="detail-item">
+          <span class="detail-label">Name:</span>
+          <span class="detail-value">Bob Wilson</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Payment Date:</span>
+          <span class="detail-value">2026-04-06</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Amount:</span>
+          <span class="detail-value">$99</span>
+        </div>
+      </div>
+      <div class="activation-status status-activated">Activated</div>
+    </div>
+    <div class="activation-actions">
+      <button class="btn-activate" disabled>Activate Card</button>
+    </div>
+  </div>
+
+  <!-- HOSPITAL SERVICE ACTIVATIONS -->
+  <h3 class="section-title">🏥 Hospital Service Activation Requests</h3>
+
+  <div class="activation-card">
+    <div class="activation-icon">🏥</div>
+    <div class="activation-content">
+      <div class="activation-id">HS-0001</div>
+      <div class="activation-type">Private Hospital - Private</div>
+      <div class="activation-details">
+        <div class="detail-item">
+          <span class="detail-label">Hospital:</span>
+          <span class="detail-value">Downtown Medical Clinic</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Payment Date:</span>
+          <span class="detail-value">2026-04-07</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Amount:</span>
+          <span class="detail-value">$999</span>
+        </div>
+      </div>
+      <div class="activation-status status-pending">Pending Activation</div>
+    </div>
+    <div class="activation-actions">
+      <button class="btn-activate" onclick="activateService('HS-0001')">Activate Service</button>
+    </div>
+  </div>
+
+  <div class="activation-card">
+    <div class="activation-icon">🏥</div>
+    <div class="activation-content">
+      <div class="activation-id">HS-0002</div>
+      <div class="activation-type">Hospital • Public</div>
+      <div class="activation-details">
+        <div class="detail-item">
+          <span class="detail-label">Hospital:</span>
+          <span class="detail-value">City General Hospital</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Payment Date:</span>
+          <span class="detail-value">2026-04-05</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Amount:</span>
+          <span class="detail-value">$499</span>
+        </div>
+      </div>
+      <div class="activation-status status-activated">Activated</div>
+    </div>
+    <div class="activation-actions">
+      <button class="btn-activate" disabled>Activate Service</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function goHome(event) {
+  if (event) event.preventDefault();
+  window.location.href = 'home_page.html';
+}
+
+function activateCard(cardId) {
+  if (confirm(`Activate patient card ${cardId}?`)) {
+    alert(`Card ${cardId} has been activated successfully!`);
+    location.reload();
+  }
+}
+
+function activateService(serviceId) {
+  if (confirm(`Activate hospital service ${serviceId}?`)) {
+    alert(`Service ${serviceId} has been activated successfully!`);
+    location.reload();
+  }
+}
+</script>
+
+</body>
+</html>

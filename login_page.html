@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MedPass Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;
+  --blue:#3B82F6;
+  --purple:#8B5CF6;
+  --teal:#14B8A6;
+  --red:#EF4444;
+  --text:#1a1a2e;
+  --muted:#6B7280;
+  --border:#E5E7EB;
+  --white:#FFFFFF;
+}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);
+  min-height:100vh;
+  padding:40px 20px;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.container{max-width:1200px;width:100%;}
+.header{text-align:center;margin-bottom:60px;}
+.logo-section{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:30px;}
+.logo-icon{font-size:48px;}
+.logo-text{font-size:36px;font-weight:700;color:var(--green);letter-spacing:-1px;}
+.header h1{font-size:42px;font-weight:700;color:var(--text);margin-bottom:12px;letter-spacing:-0.5px;}
+.header p{font-size:16px;color:#6B7280;font-weight:400;}
+.roles-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;margin-bottom:40px;}
+.role-card{background:var(--white);border-radius:20px;padding:32px 24px;box-shadow:0 4px 16px rgba(0,0,0,.12);cursor:pointer;transition:all .3s;text-align:center;border:2px solid transparent;}
+.role-card:hover{transform:translateY(-4px);box-shadow:0 12px 24px rgba(0,0,0,.1);border-color:#E5E7EB;}
+.role-icon{font-size:52px;margin-bottom:16px;display:block;width:64px;height:64px;border-radius:14px;overflow:hidden;margin-left:auto;margin-right:auto;}
+.role-icon img{width:100%;height:100%;object-fit:cover;transform:scale(1.45);border-radius:14px;}
+.login-icon img{width:100%;height:100%;object-fit:cover;transform:scale(1.45);border-radius:14px;}
+.role-name{font-size:16px;font-weight:600;color:var(--text);letter-spacing:-0.3px;}
+.footer{text-align:center;margin-top:40px;}
+.back-to-home{display:inline-flex;align-items:center;gap:8px;color:#6B7280;text-decoration:none;font-size:15px;font-weight:500;cursor:pointer;transition:color .2s;}
+.back-to-home:hover{color:var(--green);}
+.login-container{display:none;padding:40px 20px;max-width:500px;width:100%;margin:0 auto;}
+.login-container.active{display:block;}
+.login-card{background:var(--white);border-radius:24px;padding:48px 36px;box-shadow:0 10px 40px rgba(0,0,0,.08);}
+.back-link{position:absolute;top:30px;left:30px;display:flex;align-items:center;gap:6px;color:#6B7280;text-decoration:none;font-size:14px;font-weight:500;cursor:pointer;display:none;}
+.back-link.active{display:flex;}
+.back-link:hover{color:var(--green);}
+.login-header{text-align:center;margin-bottom:40px;}
+.login-icon{width:70px;height:70px;background:var(--green);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 20px;color:#fff;}
+.login-header h2{font-size:28px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-0.5px;}
+.login-header p{font-size:15px;color:#9CA3AF;font-weight:500;}
+.form-group{margin-bottom:24px;}
+.form-group label{display:block;font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px;}
+.input-wrapper{position:relative;display:flex;align-items:center;}
+.input-icon{position:absolute;left:14px;font-size:18px;color:#9CA3AF;pointer-events:none;}
+.form-group input{width:100%;padding:14px 14px 14px 44px;border:1px solid var(--border);border-radius:12px;font-size:14px;font-family:'Inter',sans-serif;transition:all .2s;background:#fafafa;}
+.form-group input:focus{outline:none;background:var(--white);border-color:var(--blue);box-shadow:0 0 0 4px rgba(59,130,246,.08);}
+.form-group input::placeholder{color:#D1D5DB;}
+.form-options{display:flex;align-items:center;justify-content:space-between;margin:22px 0 30px 0;flex-wrap:wrap;gap:12px;}
+.remember-me{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.remember-me input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--green);}
+.remember-me label{margin:0;font-size:14px;color:var(--text);cursor:pointer;font-weight:400;}
+.forgot-password{font-size:14px;color:var(--teal);text-decoration:none;cursor:pointer;font-weight:500;transition:color .2s;}
+.forgot-password:hover{color:#0d9488;}
+.btn-login{width:100%;padding:14px;background:linear-gradient(90deg,#2DC98E 0%,#14B8A6 50%,#0094C4 100%);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:all .3s;box-shadow:0 4px 15px rgba(45,201,142,.2);display:flex;align-items:center;justify-content:center;gap:10px;}
+.btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(45,201,142,.3);}
+.btn-login:active{transform:translateY(0);}
+.btn-login:disabled{opacity:0.7;cursor:not-allowed;transform:none;}
+
+/* Toast notification */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:#1a1a2e;color:#fff;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.2);transition:transform .4s cubic-bezier(0.34,1.56,0.64,1);z-index:1000;display:flex;align-items:center;gap:10px;min-width:260px;max-width:400px;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.success{border-left:4px solid var(--green);}
+.toast.error{border-left:4px solid var(--red);}
+.toast.info{border-left:4px solid var(--blue);}
+
+/* Spinner */
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Forgot password modal overlay */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;}
+.modal-overlay.active{display:flex;}
+.modal{background:#fff;border-radius:20px;padding:40px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.15);}
+.modal h3{font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.modal p{font-size:14px;color:var(--muted);margin-bottom:24px;}
+.modal-actions{display:flex;gap:12px;margin-top:24px;}
+.btn-secondary{flex:1;padding:12px;background:#f3f4f6;color:var(--text);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;}
+.btn-secondary:hover{background:#e5e7eb;}
+.btn-primary{flex:1;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;}
+.btn-primary:hover{background:#22b07d;}
+</style>
+</head>
+<body>
+
+<a href="#" class="back-link" id="backLink" onclick="goBack(event)">← Back to Role Selection</a>
+
+<div class="container" id="roleSelectionContainer">
+  <div class="header">
+    <div class="logo-section">
+      <a href="home_page.html"><img src="assets/medpass.PNG" alt="MedPass" style="height:70px;object-fit:contain;cursor:pointer;"/></a>
+    </div>
+    <h1>Login</h1>
+    <p>Select your role to continue</p>
+  </div>
+  <div class="roles-grid">
+    <div class="role-card" onclick="selectRole('Hospital','assets/h')"><span class="role-icon"><img src="assets/h.png" alt="Hospital"/></span><div class="role-name">Hospital</div></div>
+    <div class="role-card" onclick="selectRole('Doctor','assets/d')"><span class="role-icon"><img src="assets/d.png" alt="Doctor"/></span><div class="role-name">Doctor</div></div>
+    <div class="role-card" onclick="selectRole('Patient','assets/p')"><span class="role-icon"><img src="assets/p.png" alt="Patient"/></span><div class="role-name">Patient</div></div>
+    <div class="role-card" onclick="selectRole('Blood Analysis Center','assets/b')"><span class="role-icon"><img src="assets/b.png" alt="Blood Analysis Center"/></span><div class="role-name">Blood Analysis Center</div></div>
+    <div class="role-card" onclick="selectRole('Radiology Center','assets/r')"><span class="role-icon"><img src="assets/r.png" alt="Radiology Center"/></span><div class="role-name">Radiology Center</div></div>
+    <div class="role-card" onclick="selectRole('Pharmacy','assets/ph')"><span class="role-icon"><img src="assets/ph.png" alt="Pharmacy"/></span><div class="role-name">Pharmacy</div></div>
+    <div class="role-card" onclick="selectRole('Admin','assets/a')"><span class="role-icon"><img src="assets/a.png" alt="Admin"/></span><div class="role-name">Admin</div></div>
+  </div>
+  <div class="footer">
+    <a href="#" class="back-to-home" onclick="goHome(event)">← Back to Home</a>
+  </div>
+
+</div>
+
+<!-- Login Form -->
+<div class="login-container" id="loginContainer">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-icon" id="loginIcon"><img src="assets/h.png" alt="role icon"/></div>
+      <h2 id="loginRoleTitle">Hospital Login</h2>
+      <p>Enter your credentials to access your dashboard</p>
+    </div>
+    <div id="loginForm">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <div class="input-wrapper">
+          <span class="input-icon">✉️</span>
+          <input type="email" id="email" placeholder="your@email.com" required/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-wrapper">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="password" placeholder="Password" required/>
+        </div>
+      </div>
+      <div class="form-options">
+        <label class="remember-me">
+          <input type="checkbox" id="rememberMe"/>
+          <label for="rememberMe" style="margin:0;cursor:pointer;font-weight:400;font-size:14px;">Remember me</label>
+        </label>
+        <a href="#" class="forgot-password" onclick="openForgotPassword(event)">Forgot password?</a>
+      </div>
+      <button class="btn-login" id="loginBtn" onclick="handleLogin()">Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div class="modal-overlay" id="forgotModal">
+  <div class="modal">
+    <h3>Reset Password</h3>
+    <p>Enter your email address and we'll send you a link to reset your password.</p>
+    <div class="form-group">
+      <label for="resetEmail">Email Address</label>
+      <div class="input-wrapper">
+        <span class="input-icon">✉️</span>
+        <input type="email" id="resetEmail" placeholder="your@email.com"/>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeForgotPassword()">Cancel</button>
+      <button class="btn-primary" id="resetBtn" onclick="sendPasswordReset()">Send Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ✅ Firebase SDK (v10 modular via CDN compat build) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+// ================================================================
+// 🔧 STEP 1: PASTE YOUR FIREBASE CONFIG HERE
+// Go to Firebase Console → Project Settings → Your Apps → Config
+// ================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4",
+  measurementId: "G-X4DZWPY62Z"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ================================================================
+// Auth persistence based on "Remember Me"
+// ================================================================
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION); // default: session only
+
+// ================================================================
+// State
+// ================================================================
+let currentRole = null;
+
+const dashboardURLs = {
+  'Hospital':              'hospital_dashboard.html',
+  'Doctor':                'doctor_dashboard.html',
+  'Patient':               'patient_dashboard.html',
+  'Pharmacy':              'pharmacy_dashboard.html',
+  'Blood Analysis Center': 'blood_analysis_dashboard.html',
+  'Radiology Center':      'radiology_dashboard.html',
+  'Admin':                 'admin_dashboard.html'
+};
+
+// ================================================================
+// UI Helpers
+// ================================================================
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('toast');
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 4000);
+}
+
+function setLoading(loading) {
+  const btn = document.getElementById('loginBtn');
+  if (loading) {
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Signing in…';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = 'Login';
+  }
+}
+
+// ================================================================
+// Role Selection
+// ================================================================
+function selectRole(role, iconPath) {
+  currentRole = role;
+  document.getElementById('loginIcon').innerHTML = `<img src="${iconPath}.png" alt="${role}"/>`;
+  document.getElementById('loginRoleTitle').textContent = `${role} Login`;
+  document.getElementById('roleSelectionContainer').style.display = 'none';
+  document.getElementById('loginContainer').classList.add('active');
+  document.getElementById('backLink').classList.add('active');
+  setTimeout(() => document.getElementById('email').focus(), 100);
+}
+
+function goBack(event) {
+  if (event) event.preventDefault();
+  document.getElementById('loginContainer').classList.remove('active');
+  document.getElementById('roleSelectionContainer').style.display = 'block';
+  document.getElementById('backLink').classList.remove('active');
+  document.getElementById('email').value = '';
+  document.getElementById('password').value = '';
+  currentRole = null;
+}
+
+function goHome(event) {
+  if (event) event.preventDefault();
+  window.location.href = 'home_page.html';
+}
+
+// ================================================================
+// 🔐 Login with Firebase Auth
+// ================================================================
+async function handleLogin() {
+  const email      = document.getElementById('email').value.trim();
+  const password   = document.getElementById('password').value;
+  const rememberMe = document.getElementById('rememberMe').checked;
+
+  if (!email || !password) {
+    showToast('Please enter both email and password.', 'error');
+    return;
+  }
+
+  // Set persistence based on "Remember Me"
+  const persistence = rememberMe
+    ? firebase.auth.Auth.Persistence.LOCAL   // survives browser restart
+    : firebase.auth.Auth.Persistence.SESSION; // cleared when tab closes
+
+  try {
+    setLoading(true);
+    await auth.setPersistence(persistence);
+
+    // Sign in with Firebase
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    const user = userCredential.user;
+
+    // ── Optional: verify the user's role stored in Firestore ──
+    // This prevents a Doctor from logging in via the Hospital card.
+    // Remove this block if you don't use Firestore to store roles.
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      const storedRole = userDoc.data().role;
+      if (storedRole && storedRole !== currentRole) {
+        await auth.signOut();
+        showToast(`This account is registered as "${storedRole}", not "${currentRole}".`, 'error');
+        setLoading(false);
+        return;
+      }
+    }
+    // ── End role check ──
+
+    showToast(`Welcome back! Redirecting…`, 'success');
+    setTimeout(() => {
+      const url = dashboardURLs[currentRole] || 'home_page.html';
+      window.location.href = url;
+    }, 1200);
+
+  } catch (error) {
+    setLoading(false);
+    showToast(getFirebaseErrorMessage(error.code), 'error');
+  }
+}
+
+// Allow pressing Enter to submit
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && document.getElementById('loginContainer').classList.contains('active')) {
+    handleLogin();
+  }
+});
+
+// ================================================================
+// 🔑 Forgot Password
+// ================================================================
+function openForgotPassword(event) {
+  if (event) event.preventDefault();
+  // Pre-fill email if already typed
+  const email = document.getElementById('email').value.trim();
+  if (email) document.getElementById('resetEmail').value = email;
+  document.getElementById('forgotModal').classList.add('active');
+}
+
+function closeForgotPassword() {
+  document.getElementById('forgotModal').classList.remove('active');
+}
+
+async function sendPasswordReset() {
+  const email = document.getElementById('resetEmail').value.trim();
+  if (!email) { showToast('Please enter your email.', 'error'); return; }
+
+  const btn = document.getElementById('resetBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  try {
+    await auth.sendPasswordResetEmail(email);
+    showToast('Reset link sent! Check your inbox.', 'success');
+    closeForgotPassword();
+  } catch (error) {
+    showToast(getFirebaseErrorMessage(error.code), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Link';
+  }
+}
+
+// ================================================================
+// 🚦 Auth State — redirect already-logged-in users automatically
+// ================================================================
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    // User is already signed in — fetch their role and redirect
+    try {
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        const role = userDoc.data().role;
+        const url  = dashboardURLs[role] || 'home_page.html';
+        window.location.href = url;
+      }
+    } catch (e) {
+      // Firestore not set up yet — just stay on login page
+    }
+  }
+});
+
+// ================================================================
+// 🗒️ Firebase error messages → human-friendly strings
+// ================================================================
+function getFirebaseErrorMessage(code) {
+  const messages = {
+    'auth/invalid-email':           'Invalid email address.',
+    'auth/user-disabled':           'This account has been disabled.',
+    'auth/user-not-found':          'No account found with this email.',
+    'auth/wrong-password':          'Incorrect password. Please try again.',
+    'auth/invalid-credential':      'Invalid email or password.',
+    'auth/too-many-requests':       'Too many failed attempts. Try again later.',
+    'auth/network-request-failed':  'Network error. Check your connection.',
+    'auth/email-already-in-use':    'This email is already registered.',
+  };
+  return messages[code] || `Authentication error (${code}).`;
+}
+</script>
+</body>
+</html>

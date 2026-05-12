@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Patient Information - MedPass</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+      authDomain: "med1-1931d.firebaseapp.com",
+      projectId: "med1-1931d",
+      storageBucket: "med1-1931d.firebasestorage.app",
+      messagingSenderId: "358197809853",
+      appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --green:#2DC98E;
+      --green-dark:#22a874;
+      --blue:#3B82F6;
+      --purple:#8B5CF6;
+      --orange:#F97316;
+      --teal:#14B8A6;
+      --text:#1a1a2e;
+      --muted:#6B7280;
+      --border:#E5E7EB;
+      --bg:#F0F4F8;
+      --white:#FFFFFF;
+    }
+    body{font-family:'Inter',sans-serif;background:var(--bg);}
+
+    .main-container{padding:60px 5%;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+    .patient-card{background:#fff;border-radius:20px;padding:44px 32px;max-width:520px;width:100%;box-shadow:0 8px 28px rgba(0,0,0,.08);}
+    .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;margin-bottom:20px;}
+    .back-link:hover{color:var(--text);}
+    .patient-icon-circle{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#2DC98E,#14B8A6);display:grid;place-items:center;margin:0 auto 24px;}
+    .patient-icon-circle svg{width:40px;height:40px;color:#fff;}
+    .patient-title{font-size:24px;font-weight:700;text-align:center;margin-bottom:32px;color:var(--teal);}
+    .info-field{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+    .info-field:last-of-type{border-bottom:none;}
+    .info-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;}
+    .info-label svg{width:16px;height:16px;color:var(--green);}
+    .info-value{font-size:15px;font-weight:600;color:var(--text);padding-left:24px;}
+    .info-field.highlight{padding:14px 16px;border-radius:10px;border-bottom:none;margin-bottom:14px;}
+    .info-field.highlight-green{background:#F0FDF4;border:1px solid #DCFCE7;}
+    .info-field.highlight-blue{background:#F0F9FF;border:1px solid #DBEAFE;}
+    .info-field.highlight-pink{background:#FDF2F8;border:1px solid #FBE7F3;}
+    .info-field.highlight-yellow{background:#FFFBEB;border:1px solid #FEF3C7;}
+    .btn-next{background:linear-gradient(135deg,var(--green),var(--teal));color:#fff;padding:12px 28px;border:none;border-radius:25px;font-weight:600;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .loading-state{text-align:center;padding:40px;}
+    .error-state{text-align:center;padding:40px;color:#DC2626;}
+    @media(max-width:600px){.patient-card{padding:28px 20px;}}
+  </style>
+</head>
+<body>
+
+<div class="main-container">
+  <div class="patient-card" id="patientCard">
+    <div class="loading-state">Loading patient information...</div>
+  </div>
+</div>
+<script>
+  // Initialize Firebase (already done in head)
+
+  function goBack(e) {
+    if (e) e.preventDefault();
+    const ref = document.referrer;
+    if (ref && ref !== window.location.href) {
+      window.location.href = ref;
+    } else {
+      window.history.back();
+    }
+  }
+
+  async function loadPatient() {
+    const container = document.getElementById('patientCard');
+    const urlParams = new URLSearchParams(window.location.search);
+    const scanned = urlParams.get('scan');
+    let patientData = null;
+    
+    if (scanned === 'true') {
+      const stored = localStorage.getItem('scannedPatient');
+      if (stored) {
+        patientData = JSON.parse(stored);
+        localStorage.removeItem('scannedPatient');
+      }
+    }
+    
+    if (!patientData) {
+      container.innerHTML = `<div class="error-state">❌ No patient data found. Please scan a QR code.</div>`;
+      return;
+    }
+    
+    // Try to fetch fresh data from Firestore (will work if rules allow public read)
+    // If rules don't allow, use the stored data
+    try {
+      const docRef = db.collection('users').doc(patientData.id);
+      const doc = await docRef.get();
+      if (doc.exists) {
+        patientData = { id: doc.id, ...doc.data() };
+      }
+    } catch (err) {
+      console.warn('Could not fetch fresh data, using cached:', err.message);
+      // Continue with cached data
+    }
+    
+    const formatDate = (date) => {
+      if (!date) return '—';
+      if (date.toDate) date = date.toDate();
+      return new Date(date).toLocaleDateString('en-GB');
+    };
+    
+    container.innerHTML = `
+      <a href="#" onclick="goBack(event)" class="back-link">← Back</a>
+      <div class="patient-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <h1 class="patient-title">Patient Information</h1>
+      <div class="info-field highlight highlight-green"><div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Full Name</div><div class="info-value">${patientData.name || patientData.firstName + ' ' + patientData.lastName || '—'}</div></div>
+      <div class="info-field highlight highlight-blue"><div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>Patient ID</div><div class="info-value">${patientData.patientId || '—'}</div></div>
+      <div class="info-field highlight highlight-pink"><div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Date of Birth</div><div class="info-value">${patientData.dob || '—'} ${patientData.age ? `(Age: ${patientData.age})` : ''}</div></div>
+      <div class="info-field highlight highlight-yellow"><div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Blood Type</div><div class="info-value">${patientData.bloodType || '—'}</div></div>
+      <div class="info-field"><div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.38 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Phone</div><div class="info-value">${patientData.phone || '—'}</div></div>
+      <div class="info-field"><div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.38 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Emergency Contact</div><div class="info-value">${patientData.relativePhone || '—'}</div></div>
+      <div class="info-field"><div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>Chronic Diseases</div><div class="info-value">${patientData.chronicDiseases || 'None'}</div></div>
+      <div class="info-field"><div class="info-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Address</div><div class="info-value">${patientData.address || '—'}</div></div>
+      <button class="btn-next" onclick="goBack()">&#8592; Back</button>
+    `;
+  }
+  loadPatient();
+</script>
+</body>
+</html>

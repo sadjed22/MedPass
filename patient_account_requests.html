@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Patient Account Requests - MedPass Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// Secondary app to create patient accounts without losing admin session
+let secondApp;
+try { secondApp = firebase.app("secondary"); }
+catch(e) { secondApp = firebase.initializeApp(firebaseConfig, "secondary"); }
+const secondAuth = secondApp.auth();
+
+// Auth guard — Admin only
+document.documentElement.style.visibility = "hidden";
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.replace("login_page.html"); return; }
+  try {
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists) { await auth.signOut(); window.location.replace("login_page.html"); return; }
+    const profile = snap.data();
+    if (profile.role !== "Admin" || profile.status === "inactive") {
+      await auth.signOut(); window.location.replace("login_page.html"); return;
+    }
+    document.documentElement.style.visibility = "visible";
+    loadRequests();
+  } catch(e) { window.location.replace("login_page.html"); }
+});
+
+async function logout() { await auth.signOut(); window.location.replace("login_page.html"); }
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;--blue:#3B82F6;--purple:#8B5CF6;
+  --teal:#14B8A6;--red:#EF4444;--orange:#F97316;
+  --text:#1a1a2e;--muted:#6B7280;--border:#E5E7EB;--white:#FFFFFF;--dark:#2B3E50;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);min-height:100vh;margin:0;padding:0;}
+
+/* NAVBAR */
+.navbar{background:#fff;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100;}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:20px;font-weight:700;}
+.nav-brand-icon{width:32px;height:32px;background:var(--dark);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;}
+.nav-brand-text{color:var(--dark);letter-spacing:-0.5px;}
+.nav-brand-sub{font-size:11px;color:var(--muted);font-weight:400;display:block;}
+.nav-right{display:flex;align-items:center;gap:20px;}
+.nav-link{text-decoration:none;color:var(--text);font-weight:500;font-size:14px;transition:color .2s;}
+.nav-link:hover{color:var(--dark);}
+.btn-logout{display:flex;align-items:center;gap:6px;padding:8px 16px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s;}
+.btn-logout:hover{background:#FEE2E2;}
+
+/* MAIN */
+.container{max-width:1200px;margin:0 auto;padding:40px 20px;}
+.page-header{margin-bottom:32px;}
+.back-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-weight:500;font-size:14px;cursor:pointer;transition:all .2s;margin-bottom:20px;}
+.back-btn:hover{background:#f9fafb;border-color:var(--muted);}
+.page-title{display:inline-block;background:var(--blue);color:#fff;padding:12px 24px;border-radius:12px;font-size:20px;font-weight:700;letter-spacing:-0.5px;}
+
+/* STATS ROW */
+.stats-row{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+.stat-pill{display:flex;align-items:center;gap:8px;padding:8px 16px;background:#fff;border-radius:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);font-size:13px;font-weight:600;color:var(--text);}
+.stat-dot{width:8px;height:8px;border-radius:50%;}
+.stat-dot.pending{background:#F59E0B;}
+.stat-dot.approved{background:var(--green);}
+.stat-dot.rejected{background:var(--red);}
+
+/* FILTER TABS */
+.filter-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.filter-tab{padding:8px 16px;border:1.5px solid var(--border);border-radius:20px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;color:var(--muted);}
+.filter-tab.active{background:var(--blue);border-color:var(--blue);color:#fff;}
+.filter-tab:hover:not(.active){border-color:#9CA3AF;color:var(--text);}
+
+/* NOTE BOX */
+.note-box{background:rgba(59,130,246,.05);border-left:4px solid var(--blue);padding:14px;border-radius:8px;margin-bottom:20px;font-size:13px;color:var(--text);}
+
+/* TABLE */
+.table-card{background:#fff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden;margin-bottom:40px;}
+.table-header{background:linear-gradient(90deg,#2B3E50 0%,#1a1a2e 100%);padding:16px 24px;display:grid;grid-template-columns:.8fr 1.4fr 1.2fr .9fr .9fr 1.4fr;gap:12px;color:#fff;font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;}
+.table-row{padding:16px 24px;display:grid;grid-template-columns:.8fr 1.4fr 1.2fr .9fr .9fr 1.4fr;gap:12px;border-bottom:1px solid var(--border);align-items:center;transition:background .2s;}
+.table-row:hover{background:#f9fafb;}
+.table-row:last-child{border-bottom:none;}
+.table-cell{font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;}
+.req-id{color:var(--blue);font-weight:700;font-size:12px;font-family:'Courier New',monospace;}
+.hospital-name{font-weight:600;color:var(--text);}
+.patient-name{color:var(--text);}
+
+/* STATUS BADGES */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;}
+.badge-pending{background:#FEF3C7;color:#92400E;}
+.badge-approved{background:#D1FAE5;color:#065F46;}
+.badge-rejected{background:#FEE2E2;color:#991B1B;}
+
+/* DETAIL SNIPPET */
+.patient-detail{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ACTIONS */
+.action-buttons{display:flex;gap:6px;flex-wrap:wrap;}
+.btn-approve{background:var(--green);color:#fff;border:none;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-approve:hover{background:#24a67a;transform:translateY(-1px);}
+.btn-approve:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-reject{background:#FEE2E2;color:#DC2626;border:none;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-reject:hover{background:#FCA5A5;transform:translateY(-1px);}
+.btn-reject:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-details{background:#F3F4F6;color:var(--text);border:none;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-details:hover{background:#E5E7EB;}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-icon{font-size:52px;margin-bottom:12px;}
+.empty-text{font-size:16px;font-weight:600;margin-bottom:6px;color:var(--text);}
+.empty-sub{font-size:14px;}
+
+/* LOADING ROWS */
+.skeleton-row{padding:16px 24px;display:grid;grid-template-columns:.8fr 1.4fr 1.2fr .9fr .9fr 1.4fr;gap:12px;border-bottom:1px solid var(--border);}
+.skel{height:14px;background:#E5E7EB;border-radius:6px;animation:pulse 1.3s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.active{display:flex;}
+.modal{background:#fff;border-radius:20px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.2);}
+.modal-head{padding:24px 28px 0;display:flex;align-items:center;justify-content:space-between;}
+.modal-head h2{font-size:18px;font-weight:700;color:var(--text);}
+.modal-close{width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s;}
+.modal-close:hover{background:#E5E7EB;color:var(--text);}
+.modal-body{padding:20px 28px 28px;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.detail-item{background:#F9FAFB;border-radius:10px;padding:12px 14px;}
+.detail-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.detail-value{font-size:14px;font-weight:600;color:var(--text);}
+.detail-item.full{grid-column:1/-1;}
+.records-section{margin-top:20px;border-top:2px solid var(--border);padding-top:16px;}
+.records-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.record-item{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;}
+.record-item-header{font-weight:600;font-size:13px;color:var(--text);margin-bottom:6px;}
+.record-item-details{font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;}
+.modal-actions{display:flex;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+.modal-btn-cancel{flex:1;padding:12px;background:#F3F4F6;color:var(--text);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;}
+.modal-btn-cancel:hover{background:#E5E7EB;}
+.modal-btn-approve{flex:2;padding:12px;background:linear-gradient(90deg,var(--green),var(--teal));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+.modal-btn-approve:hover{opacity:.92;}
+.modal-btn-approve:disabled{opacity:.6;cursor:not-allowed;}
+.modal-btn-reject{flex:1;padding:12px;background:#FEE2E2;color:#DC2626;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;}
+.modal-btn-reject:hover{background:#FCA5A5;}
+.modal-btn-reject:disabled{opacity:.6;cursor:not-allowed;}
+
+/* QR SUCCESS MODAL */
+.qr-success{text-align:center;padding:8px 0;}
+.qr-success .hero{font-size:48px;margin-bottom:12px;}
+.qr-success h3{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.qr-success .sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.qr-dark-card{background:linear-gradient(135deg,#1a1a2e,#2B3E50);border-radius:16px;padding:24px;margin-bottom:16px;color:#fff;text-align:center;}
+.qr-wrapper{background:#fff;border-radius:10px;padding:10px;display:inline-flex;margin:0 auto 10px;}
+.qr-pid{font-size:13px;font-weight:700;color:var(--green);font-family:'Courier New',monospace;letter-spacing:2px;margin-bottom:4px;}
+.qr-url-text{font-size:10px;color:rgba(255,255,255,.4);word-break:break-all;font-family:'Courier New',monospace;}
+
+/* SPINNER */
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;background:#1a1a2e;color:#fff;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.2);z-index:999;display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1);min-width:260px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-left:4px solid var(--green);}
+.toast.error{border-left:4px solid var(--red);}
+
+@media(max-width:1024px){.table-header,.table-row{grid-template-columns:1fr 1.2fr 1fr 1fr 1.2fr;}.table-header .th-dob,.table-row .td-dob{display:none;}}
+@media(max-width:768px){
+  .navbar{padding:16px 20px;}
+  .container{padding:20px 16px;}
+  .table-header{display:none;}
+  .table-row{grid-template-columns:1fr;padding:16px;gap:8px;margin:0 0 4px;}
+  .table-cell::before{content:attr(data-label);display:block;font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;}
+  .skeleton-row{display:none;}
+  .detail-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="admin_dashboard.html" class="nav-brand">
+    <div class="nav-brand-icon">🛡️</div>
+    <div>
+      <div class="nav-brand-text">MedPass</div>
+      <span class="nav-brand-sub">Admin Portal</span>
+    </div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">Home</a>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <a href="admin_dashboard.html" class="back-btn">← Back</a>
+    <div class="page-title">👥 Patient Account Requests</div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-pill"><div class="stat-dot pending"></div><span id="countPending">0 pending</span></div>
+    <div class="stat-pill"><div class="stat-dot approved"></div><span id="countApproved">0 approved</span></div>
+    <div class="stat-pill"><div class="stat-dot rejected"></div><span id="countRejected">0 rejected</span></div>
+  </div>
+
+  <div class="filter-tabs">
+    <button class="filter-tab active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-tab" onclick="setFilter('pending',this)">⏳ Pending</button>
+    <button class="filter-tab" onclick="setFilter('approved',this)">✅ Approved</button>
+    <button class="filter-tab" onclick="setFilter('rejected',this)">❌ Rejected</button>
+  </div>
+
+  <div class="note-box">
+    <strong>Note:</strong> Approving a request creates the patient's Firebase Auth account, saves their profile to Firestore (including blood tests and radiology reports), and generates a MedPass card with QR code automatically.
+  </div>
+
+  <div class="table-card">
+    <div class="table-header">
+      <div>Request ID</div>
+      <div>Hospital</div>
+      <div>Patient Name</div>
+      <div class="th-dob">Date</div>
+      <div>Status</div>
+      <div>Actions</div>
+    </div>
+    <div id="tableBody">
+      <!-- skeleton rows -->
+      <div class="skeleton-row"><div class="skel" style="width:80%"></div><div class="skel" style="width:60%"></div><div class="skel" style="width:70%"></div><div class="skel" style="width:50%"></div><div class="skel" style="width:60%"></div><div class="skel" style="width:90%"></div></div>
+      <div class="skeleton-row"><div class="skel" style="width:70%"></div><div class="skel" style="width:80%"></div><div class="skel" style="width:55%"></div><div class="skel" style="width:65%"></div><div class="skel" style="width:50%"></div><div class="skel" style="width:75%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" id="detailModalContent">
+    <div class="modal-head">
+      <h2 id="modalTitle">Patient Request</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- QR SUCCESS MODAL -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Patient Account Created 🎉</h2>
+      <button class="modal-close" onclick="document.getElementById('qrModal').classList.remove('active')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="qr-success">
+        <div class="hero">💳</div>
+        <h3>Account & Card Generated!</h3>
+        <p class="sub">Patient is now registered in Firebase. Their MedPass card is ready.</p>
+        <div class="qr-dark-card">
+          <div class="qr-pid" id="qrPatientId">—</div>
+          <div class="qr-wrapper" id="qrCodeContainer"></div>
+          <div class="qr-url-text" id="qrUrlText">—</div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button class="modal-btn-cancel" onclick="document.getElementById('qrModal').classList.remove('active');loadRequests();" style="flex:1;">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let allRequests = [];
+let currentFilter = 'all';
+let currentReq = null;
+
+// ── Helpers ──────────────────────────────────────────────────
+function generatePatientId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id = 'MP-';
+  for (let i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
+
+function buildPatientUrl(uid) {
+  return `${location.origin}/patient_info.html?uid=${uid}`;
+}
+
+function generateNfcPayload(uid) {
+  const url = buildPatientUrl(uid);
+  const uriBody = url.replace('https://', '');
+  const prefix = 0x03;
+  const payloadBytes = [prefix, ...uriBody.split('').map(c => c.charCodeAt(0))];
+  const payloadLen = payloadBytes.length;
+  const header = [0xD1, 0x01, payloadLen, 0x55];
+  const ndefHex = [...header, ...payloadBytes].map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+  return { url, ndefHex };
+}
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+// ── Load requests from Firestore ─────────────────────────────
+async function loadRequests() {
+  try {
+    const snap = await db.collection('patientRequests')
+      .orderBy('submittedAt', 'desc')
+      .limit(200)
+      .get();
+
+    allRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    updateStats();
+    renderTable();
+  } catch(err) {
+    document.getElementById('tableBody').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Failed to load requests</div><div class="empty-sub">${err.message}</div></div>`;
+  }
+}
+
+function updateStats() {
+  const pending  = allRequests.filter(r => r.status === 'pending').length;
+  const approved = allRequests.filter(r => r.status === 'approved').length;
+  const rejected = allRequests.filter(r => r.status === 'rejected').length;
+  document.getElementById('countPending').textContent  = `${pending} pending`;
+  document.getElementById('countApproved').textContent = `${approved} approved`;
+  document.getElementById('countRejected').textContent = `${rejected} rejected`;
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+
+function renderTable() {
+  const filtered = currentFilter === 'all' ? allRequests : allRequests.filter(r => r.status === currentFilter);
+  const tbody = document.getElementById('tableBody');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<div class="empty-state"><div class="empty-icon">${currentFilter === 'pending' ? '🎉' : '📭'}</div><div class="empty-text">${currentFilter === 'pending' ? 'No pending requests!' : 'No requests found'}</div><div class="empty-sub">Nothing to show for this filter.</div></div>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(req => {
+    const isPending  = req.status === 'pending';
+    const isApproved = req.status === 'approved';
+    const badge = isPending
+      ? `<span class="badge badge-pending">⏳ Pending</span>`
+      : isApproved
+        ? `<span class="badge badge-approved">✅ Approved</span>`
+        : `<span class="badge badge-rejected">❌ Rejected</span>`;
+
+    const actions = isPending
+      ? `<div class="action-buttons">
+           <button class="btn-approve" onclick="openDetail('${req.id}')">Review & Approve</button>
+           <button class="btn-reject" onclick="quickReject('${req.id}')">Reject</button>
+         </div>`
+      : `<button class="btn-details" onclick="openDetail('${req.id}')">View Details</button>`;
+
+    return `<div class="table-row">
+      <div class="table-cell req-id" data-label="Request ID">${req.reqId || req.id}</div>
+      <div class="table-cell hospital-name" data-label="Hospital">${req.hospitalName || '—'}</div>
+      <div class="table-cell patient-name" data-label="Patient">
+        ${req.name || '—'}
+        <div class="patient-detail">${req.bloodType || ''} · DOB: ${req.dob || '—'}</div>
+      </div>
+      <div class="table-cell td-dob" data-label="Submitted">${fmtDate(req.submittedAt)}</div>
+      <div class="table-cell" data-label="Status">${badge}</div>
+      <div class="table-cell" data-label="Actions">${actions}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Detail modal with blood tests and radiology reports ──────
+function openDetail(reqId) {
+  currentReq = allRequests.find(r => r.id === reqId);
+  if (!currentReq) return;
+
+  const isPending = currentReq.status === 'pending';
+  document.getElementById('modalTitle').textContent = isPending ? '👤 Review Patient Request' : '👤 Request Details';
+
+  // Build blood tests HTML
+  let bloodTestsHtml = '';
+  if (currentReq.bloodTests && currentReq.bloodTests.length > 0) {
+    bloodTestsHtml = `
+      <div class="records-section">
+        <div class="records-title">🩸 Blood Tests (${currentReq.bloodTests.length})</div>
+        ${currentReq.bloodTests.map((test, idx) => `
+          <div class="record-item">
+            <div class="record-item-header">${test.testName}</div>
+            <div class="record-item-details">
+              <span>📅 ${test.date}</span>
+              <span>🏥 ${test.labName}</span>
+              <span>📊 Result: ${test.result}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    bloodTestsHtml = `<div class="records-section"><div class="records-title">🩸 Blood Tests</div><div class="record-item" style="color:var(--muted);">No blood tests recorded</div></div>`;
+  }
+
+  // Build radiology reports HTML
+  let radiologyHtml = '';
+  if (currentReq.radiologyReports && currentReq.radiologyReports.length > 0) {
+    radiologyHtml = `
+      <div class="records-section">
+        <div class="records-title">🩻 Radiology Reports (${currentReq.radiologyReports.length})</div>
+        ${currentReq.radiologyReports.map((report, idx) => `
+          <div class="record-item">
+            <div class="record-item-header">${report.examType}</div>
+            <div class="record-item-details">
+              <span>📅 ${report.date}</span>
+              <span>🏥 ${report.centerName}</span>
+              <span>🔍 Finding: ${report.finding}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    radiologyHtml = `<div class="records-section"><div class="records-title">🩻 Radiology Reports</div><div class="record-item" style="color:var(--muted);">No radiology reports recorded</div></div>`;
+  }
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-item"><div class="detail-label">Request ID</div><div class="detail-value" style="font-family:monospace;font-size:12px;">${currentReq.reqId || currentReq.id}</div></div>
+      <div class="detail-item"><div class="detail-label">Hospital</div><div class="detail-value">${currentReq.hospitalName || '—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Full Name</div><div class="detail-value">${currentReq.name || '—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Date of Birth</div><div class="detail-value">${currentReq.dob || '—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Age</div><div class="detail-value">${currentReq.age != null ? currentReq.age + ' yrs' : '—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Blood Type</div><div class="detail-value" style="color:#DC2626;font-size:16px;">${currentReq.bloodType || '—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Gender</div><div class="detail-value">${currentReq.gender || '—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Email</div><div class="detail-value" style="font-size:13px;">${currentReq.email || '—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value">${currentReq.phone || '—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Relative's Phone</div><div class="detail-value">${currentReq.relativePhone || '—'}</div></div>
+      <div class="detail-item full"><div class="detail-label">Address</div><div class="detail-value" style="font-weight:400;">${currentReq.address || '—'}</div></div>
+      <div class="detail-item full"><div class="detail-label">Chronic Diseases</div><div class="detail-value" style="font-weight:400;">${currentReq.chronicDiseases || 'None'}</div></div>
+      <div class="detail-item"><div class="detail-label">Submitted</div><div class="detail-value">${fmtDate(currentReq.submittedAt)}</div></div>
+      <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value">${currentReq.status}</div></div>
+    </div>
+    ${bloodTestsHtml}
+    ${radiologyHtml}
+    ${isPending ? `
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn-reject" id="modalRejectBtn" onclick="rejectFromModal()">✕ Reject</button>
+      <button class="modal-btn-approve" id="modalApproveBtn" onclick="approveRequest()">
+        <span id="approveText">✓ Approve & Create Account</span>
+      </button>
+    </div>` : `
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="closeModal()">Close</button>
+    </div>`}
+  `;
+
+  document.getElementById('detailModal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('detailModal').classList.remove('active');
+  currentReq = null;
+}
+document.getElementById('detailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── Quick reject (no modal) ───────────────────────────────────
+async function quickReject(reqId) {
+  if (!confirm('Reject this patient registration request?')) return;
+  await doReject(reqId);
+}
+
+async function rejectFromModal() {
+  if (!currentReq) return;
+  const btn = document.getElementById('modalRejectBtn');
+  btn.disabled = true; btn.textContent = 'Rejecting…';
+  await doReject(currentReq.id);
+  closeModal();
+}
+
+async function doReject(reqId) {
+  try {
+    await db.collection('patientRequests').doc(reqId).update({
+      status: 'rejected',
+      reviewedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const idx = allRequests.findIndex(r => r.id === reqId);
+    if (idx !== -1) allRequests[idx].status = 'rejected';
+    updateStats();
+    renderTable();
+    showToast('Request rejected.', 'error');
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+// ── Approve: create Firebase Auth + Firestore user with blood tests and radiology ─────
+async function approveRequest() {
+  if (!currentReq) return;
+
+  const approveBtn = document.getElementById('modalApproveBtn');
+  const rejectBtn  = document.getElementById('modalRejectBtn');
+  approveBtn.disabled = true;
+  rejectBtn.disabled  = true;
+  document.getElementById('approveText').innerHTML = '<div class="spinner"></div> Creating account…';
+
+  try {
+    const req = currentReq;
+
+    // 1. Create Firebase Auth account using secondary app
+    const cred = await secondAuth.createUserWithEmailAndPassword(req.email, req.password);
+    const uid  = cred.user.uid;
+    await secondAuth.signOut();
+
+    // 2. Generate card data
+    const patientId = generatePatientId();
+    const { url, ndefHex } = generateNfcPayload(uid);
+
+    // 3. Prepare blood tests with metadata
+    const bloodTestsWithMeta = (req.bloodTests || []).map(test => ({
+      ...test,
+      addedAt: new Date().toISOString(),
+      addedBy: 'admin_approval',
+      status: 'approved'
+    }));
+
+    // 4. Prepare radiology reports with metadata
+    const radiologyWithMeta = (req.radiologyReports || []).map(report => ({
+      ...report,
+      addedAt: new Date().toISOString(),
+      addedBy: 'admin_approval',
+      status: 'approved'
+    }));
+
+    // 5. Build Firestore user profile with medical records
+    const profile = {
+      name:            req.name,
+      firstName:       req.firstName,
+      lastName:        req.lastName,
+      email:           req.email,
+      role:            'Patient',
+      status:          'active',
+      phone:           req.phone         || '',
+      relativePhone:   req.relativePhone || '',
+      address:         req.address       || '',
+      dob:             req.dob,
+      age:             req.age,
+      gender:          req.gender        || '',
+      bloodType:       req.bloodType,
+      chronicDiseases: req.chronicDiseases || 'None',
+
+      // Medical records - THIS IS KEY FOR DOCTOR DASHBOARD
+      bloodTests:      bloodTestsWithMeta,
+      radiologyReports: radiologyWithMeta,
+
+      // Card data
+      patientId:       patientId,
+      cardStatus:      'active',
+      qrData:          url,
+      nfcUrl:          url,
+      nfcNdefHex:      ndefHex,
+
+      // Traceability
+      hospitalUid:     req.hospitalUid,
+      hospitalName:    req.hospitalName,
+      requestId:       req.reqId || req.id,
+
+      createdAt:       firebase.firestore.FieldValue.serverTimestamp(),
+      lastLogin:       null,
+    };
+
+    // 6. Write to users collection
+    await db.collection('users').doc(uid).set(profile);
+
+    // 7. Also save blood tests to separate collection for easier querying
+    if (bloodTestsWithMeta.length > 0) {
+      for (const test of bloodTestsWithMeta) {
+        await db.collection('bloodTests').add({
+          ...test,
+          patientId: uid,
+          patientName: req.name,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+
+    // 8. Also save radiology reports to separate collection
+    if (radiologyWithMeta.length > 0) {
+      for (const report of radiologyWithMeta) {
+        await db.collection('radiologyReports').add({
+          ...report,
+          patientId: uid,
+          patientName: req.name,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+
+    // 9. Update patientRequest doc: mark approved, store uid, remove password
+    await db.collection('patientRequests').doc(req.id).update({
+      status:      'approved',
+      patientUid:  uid,
+      patientId:   patientId,
+      reviewedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+      password:    firebase.firestore.FieldValue.delete(), // clean up stored password
+    });
+
+    // 10. Create a card request document — automatically tracked in Card Status
+    const cardReqId = 'CARD-' + Date.now().toString(36).toUpperCase();
+    const estDelivery = new Date();
+    estDelivery.setDate(estDelivery.getDate() + 14); // 14-day default estimate
+    await db.collection('cardRequests').doc(cardReqId).set({
+      cardReqId:    cardReqId,
+      patientUid:   uid,
+      patientId:    patientId,
+      patientName:  req.name,
+      hospitalName: req.hospitalName,
+      requestDate:  firebase.firestore.FieldValue.serverTimestamp(),
+      estDelivery:  estDelivery.toISOString().split('T')[0],
+      status:       'pending',   // pending → sent → received
+      sourceReqId:  req.reqId || req.id,
+      createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // 10. Update local state
+    const idx = allRequests.findIndex(r => r.id === req.id);
+    if (idx !== -1) allRequests[idx].status = 'approved';
+    updateStats();
+    renderTable();
+
+    // 11. Close detail modal, open QR success modal
+    closeModal();
+    showQrModal(patientId, url, req.name);
+
+    showToast(`✅ Account created & card request auto-generated (${bloodTestsWithMeta.length} blood tests, ${radiologyWithMeta.length} radiology reports)`, 'success');
+
+  } catch(err) {
+    approveBtn.disabled = false;
+    rejectBtn.disabled  = false;
+    document.getElementById('approveText').textContent = '✓ Approve & Create Account';
+    const msgs = {
+      'auth/email-already-in-use': 'This email is already registered in Firebase Auth.',
+      'auth/invalid-email':        'The email address is invalid.',
+      'auth/weak-password':        'Password is too weak (min. 6 characters).',
+      'permission-denied':         'Firestore permission denied — check security rules.',
+    };
+    showToast(msgs[err.code] || 'Error: ' + (err.message || err.code), 'error');
+  }
+}
+
+// ── QR Success modal ─────────────────────────────────────────
+function showQrModal(patientId, url, name) {
+  document.getElementById('qrPatientId').textContent = patientId;
+  document.getElementById('qrUrlText').textContent   = url;
+  document.getElementById('qrCodeContainer').innerHTML = '';
+
+  document.getElementById('qrModal').classList.add('active');
+
+  setTimeout(() => {
+    const container = document.getElementById('qrCodeContainer');
+    if (container && typeof QRCode !== 'undefined') {
+      new QRCode(container, {
+        text:         url,
+        width:        140,
+        height:       140,
+        colorDark:    '#1a1a2e',
+        colorLight:   '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+  }, 80);
+
+  showToast(`✅ ${name}'s account & card created!`, 'success');
+  renderTable();
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 5000);
+}
+</script>
+</body>
+</html>

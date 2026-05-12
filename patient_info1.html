@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Patient Info - MedPass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+};
+
+const ALLOWED_ROLES = ['Pharmacy','Blood Analysis Center','Radiology Center','Doctor','Admin'];
+
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+document.documentElement.style.visibility = 'hidden';
+
+let currentUserProfile = null;
+let patientData = null;
+let doctorRequests = [];
+
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.replace('login_page.html'); return; }
+  try {
+    const snap = await db.collection('users').doc(user.uid).get();
+    if (!snap.exists) { await auth.signOut(); window.location.replace('login_page.html'); return; }
+    const profile = snap.data();
+    if (!ALLOWED_ROLES.includes(profile.role) || profile.status === 'inactive') {
+      await auth.signOut(); window.location.replace('login_page.html'); return;
+    }
+    currentUserProfile = { uid: user.uid, ...profile };
+    document.documentElement.style.visibility = 'visible';
+    await init();
+  } catch(e) {
+    console.error(e);
+    window.location.replace('login_page.html');
+  }
+});
+
+async function init() {
+  // Load patient from localStorage (set by QR/NFC scan)
+  const stored = localStorage.getItem('scannedPatient');
+  if (stored) {
+    try { patientData = JSON.parse(stored); } catch(e) {}
+  }
+  // Fallback: uid from URL
+  const params = new URLSearchParams(window.location.search);
+  const uidParam = params.get('uid') || params.get('patientUid');
+  if (!patientData && uidParam) {
+    const doc = await db.collection('users').doc(uidParam).get();
+    if (doc.exists) patientData = { id: doc.id, ...doc.data() };
+  }
+
+  if (!patientData) {
+    showFatalError('No patient data found. Please scan a patient card first.');
+    return;
+  }
+
+  renderPatientProfile();
+  await fetchDoctorRequests();
+}
+
+// ── Render patient profile ────────────────────────────────────────────────
+function renderPatientProfile() {
+  const p = patientData;
+  const name = p.fullName || p.name || ((p.firstName||'') + ' ' + (p.lastName||'')).trim() || 'Unknown';
+  const pid  = p.patientId || p.id || '—';
+
+  set('pt-name',        name);
+  set('pt-id',          'ID: ' + pid);
+  set('pt-blood-badge', p.bloodType || p.blood || '—');
+  set('pt-blood-card',  p.bloodType || p.blood || '—');
+  set('pt-fname',       p.firstName  || name.split(' ')[0] || '—');
+  set('pt-lname',       p.lastName   || name.split(' ').slice(1).join(' ') || '—');
+  set('pt-dob',         p.dateOfBirth || p.dob || '—');
+  set('pt-phone',       p.phone || p.phoneNumber || '—');
+  set('pt-email',       p.email || '—');
+  set('pt-address',     p.address || '—');
+
+  // Emergency contact
+  const ec = p.emergencyContact || {};
+  const ecName   = ec.name   || p.emergencyContactName   || '—';
+  const ecPhone  = ec.phone  || p.emergencyContactPhone  || '—';
+  const ecRel    = ec.relation || p.emergencyContactRelation || '';
+  set('pt-ec-label', ecRel || 'Emergency Contact');
+  set('pt-ec-name',  ecName);
+  set('pt-ec-phone', ecPhone);
+  const callBtn = document.getElementById('btn-emergency-call');
+  if (callBtn) callBtn.href = ecPhone !== '—' ? 'tel:' + ecPhone : '#';
+
+  // Chronic diseases
+  const diseases = p.chronicDiseases || p.chronicConditions || p.diseases || [];
+  const diseaseText = Array.isArray(diseases) ? diseases.join(', ') : (diseases || '');
+  if (diseaseText) {
+    set('pt-diseases', diseaseText);
+  } else {
+    const sec = document.getElementById('chronic-section');
+    if (sec) sec.style.display = 'none';
+  }
+}
+
+function set(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val || '—';
+}
+
+// ── Fetch requests for this patient addressed to current user ─────────────
+async function fetchDoctorRequests() {
+  const role = currentUserProfile.role;
+  const uid  = currentUserProfile.uid;
+  const patientUid = patientData.id || patientData.uid || '';
+
+  const collectionMap = {
+    'Pharmacy':             'pharmacyRequests',
+    'Blood Analysis Center':'bloodTestRequests',
+    'Radiology Center':     'radiologyRequests',
+  };
+
+  const colName = collectionMap[role];
+
+  try {
+    let snap;
+    if (colName) {
+      snap = await db.collection(colName)
+        .where('targetId', '==', uid)
+        .where('patientId', '==', patientUid)
+        .get();
+    } else {
+      // Doctor/Admin: consultation requests for this patient
+      snap = await db.collection('consultationRequests')
+        .where('patientId', '==', patientUid)
+        .get();
+    }
+
+    doctorRequests = snap.docs.map(d => ({ docId: d.id, ...d.data() }))
+      .sort((a, b) => {
+        const ta = a.sentAt?.toMillis ? a.sentAt.toMillis() : 0;
+        const tb = b.sentAt?.toMillis ? b.sentAt.toMillis() : 0;
+        return tb - ta;
+      });
+
+    renderRequests(role);
+  } catch(e) {
+    console.error('Error fetching requests:', e);
+    document.getElementById('requests-container').innerHTML =
+      `<div class="empty-state"><div style="font-size:36px;margin-bottom:12px;">⚠️</div><div>Error loading requests:<br>${esc(e.message)}</div></div>`;
+  }
+}
+
+// ── Render requests list ──────────────────────────────────────────────────
+function renderRequests(role) {
+  const container = document.getElementById('requests-container');
+  const pid = patientData.patientId || patientData.id || '—';
+
+  const titleMap = {
+    'Pharmacy':              '💊 Prescription Requests',
+    'Blood Analysis Center': '🩸 Blood Test Requests',
+    'Radiology Center':      '🩻 Radiology Requests',
+    'Doctor':                '💬 Consultation Requests',
+    'Admin':                 '📋 All Doctor Requests',
+  };
+  set('requests-title', titleMap[role] || 'Doctor Requests');
+  set('requests-pid',   'Patient ID: ' + pid);
+
+  if (!doctorRequests || doctorRequests.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div style="font-size:48px;margin-bottom:14px;">📭</div>
+        <div style="font-weight:700;font-size:16px;margin-bottom:6px;">No requests found</div>
+        <div>No doctor requests addressed to you for this patient.</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = doctorRequests.map((req, i) => {
+    const date = req.sentAt?.toDate
+      ? req.sentAt.toDate().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})
+      : '—';
+    const reqId   = 'REQ-' + String(i+1).padStart(3,'0');
+    const priority = req.priority || 'Normal';
+    const prioClass = priority.toLowerCase()==='stat' ? 'priority-stat'
+                    : priority.toLowerCase()==='urgent' ? 'priority-urgent'
+                    : 'priority-normal';
+
+    let leftHtml='', rightHtml='', notesText='';
+
+    if (role === 'Pharmacy') {
+      leftHtml  = detail('Requesting Doctor', req.doctorName||'—', '📅 '+date);
+      rightHtml = detail('Medication', req.medicationName||'—',
+        [req.dosage, req.frequency, req.duration].filter(Boolean).join(' · '));
+      notesText = req.instructions || '';
+
+    } else if (role === 'Blood Analysis Center') {
+      leftHtml  = detail('Requesting Doctor', req.doctorName||'—', '📅 '+date);
+      rightHtml = detail('Test Type', req.testType||'—', priority+' Priority');
+      notesText = req.clinicalNotes || '';
+
+    } else if (role === 'Radiology Center') {
+      leftHtml  = detail('Requesting Doctor', req.doctorName||'—', '📅 '+date);
+      rightHtml = detail('Exam Type', req.examinationType||'—', req.bodyPart||'');
+      notesText = req.clinicalIndication || '';
+
+    } else {
+      leftHtml  = detail('From Doctor', req.doctorName||'—', '📅 '+date);
+      rightHtml = detail('Specialty', req.specialty||'—', '');
+      notesText = req.reason || req.medicalSummary || '';
+    }
+
+    const mainTitle = role==='Pharmacy' ? (req.medicationName||'Prescription')
+                    : role==='Blood Analysis Center' ? (req.testType||'Blood Test')
+                    : role==='Radiology Center' ? (req.examinationType||'Radiology Exam')
+                    : (req.reason||'Consultation');
+
+    return `
+    <div class="req-card" style="animation-delay:${i*60}ms">
+      <div class="req-card-header">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div class="req-icon">${reqIcon(role)}</div>
+          <div>
+            <div class="req-name">${esc(mainTitle)}</div>
+            <div class="req-sub">Request ID: ${reqId}</div>
+          </div>
+        </div>
+        <span class="priority-badge ${prioClass}">${esc(priority)}</span>
+      </div>
+      <div class="req-grid">
+        <div class="req-box">${leftHtml}</div>
+        <div class="req-box">${rightHtml}</div>
+      </div>
+      ${notesText ? `
+      <div class="req-notes">
+        <div class="notes-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Doctor's Notes
+        </div>
+        <div>${esc(notesText)}</div>
+      </div>` : ''}
+      ${req.fileUrl ? `<a href="${req.fileUrl}" target="_blank" class="btn-pdf">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        View PDF
+      </a>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function detail(label, val, sub) {
+  return `<div class="detail-label">${esc(label)}</div>
+          <div class="detail-val">${esc(val)}</div>
+          ${sub ? `<div class="detail-sub">${esc(sub)}</div>` : ''}`;
+}
+
+function reqIcon(role) {
+  const map = {
+    'Pharmacy':              `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="12" y1="10" x2="12" y2="17"/><line x1="8.5" y1="13.5" x2="15.5" y2="13.5"/></svg>`,
+    'Blood Analysis Center': `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+    'Radiology Center':      `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/></svg>`,
+    'Doctor':                `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  };
+  return map[role] || map['Doctor'];
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function showFatalError(msg) {
+  document.body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;text-align:center;padding:24px;">
+      <div>
+        <div style="font-size:52px;margin-bottom:16px;">⚠️</div>
+        <div style="font-size:20px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">No Patient Data</div>
+        <div style="color:#6B7280;margin-bottom:24px;">${msg}</div>
+        <a href="javascript:history.back()" style="padding:12px 24px;background:#2DC98E;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;">← Go Back</a>
+      </div>
+    </div>`;
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function logout() { auth.signOut().then(() => window.location.replace('login_page.html')); }
+</script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;--blue:#3B82F6;--red:#EF4444;
+  --orange:#F97316;--teal:#14B8A6;
+  --text:#1a1a2e;--muted:#6B7280;--border:#E5E7EB;
+}
+html,body{min-height:100%;scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#EEF5FF 0%,#F0FDF9 100%);min-height:100vh;margin:0;display:flex;flex-direction:column;}
+
+/* NAVBAR */
+.navbar{background:#fff;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100;}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.nav-logo{width:34px;height:34px;background:linear-gradient(135deg,#2DC98E,#3B82F6);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.nav-title{font-size:18px;font-weight:700;color:var(--teal);letter-spacing:-.3px;}
+.nav-right{display:flex;align-items:center;gap:12px;}
+.back-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#fff;border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all .2s;}
+.back-btn:hover{background:#f9fafb;}
+.btn-logout{padding:7px 14px;background:#FEF2F2;color:#DC2626;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;}
+
+/* SCREENS */
+.screen{display:none;}
+.screen.active{display:block;}
+
+/* ── PROFILE SCREEN ── */
+.profile-wrap{max-width:920px;margin:0 auto;padding:32px 20px;}
+.profile-grid{display:grid;grid-template-columns:290px 1fr;gap:24px;align-items:start;}
+
+/* Left card */
+.left-card{background:#fff;border-radius:20px;box-shadow:0 2px 14px rgba(0,0,0,.07);overflow:hidden;}
+.avatar-section{display:flex;flex-direction:column;align-items:center;padding:30px 24px 22px;border-bottom:1px solid var(--border);}
+.avatar-circle{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#DBEAFE,#EFF6FF);display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.avatar-circle svg{width:44px;height:44px;color:var(--blue);}
+.pt-name{font-size:18px;font-weight:700;color:var(--text);text-align:center;margin-bottom:3px;}
+.pt-pid{font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;}
+.blood-badge{background:linear-gradient(135deg,#EF4444,#F97316);color:#fff;border-radius:12px;padding:12px 20px;width:100%;text-align:center;}
+.blood-lbl{font-size:11px;opacity:.85;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:3px;}
+.blood-val{font-size:26px;font-weight:800;letter-spacing:-1px;}
+
+.ec-section{padding:20px 24px;}
+.ec-header{font-size:13px;font-weight:700;color:var(--orange);display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+.ec-label{font-size:11px;color:var(--muted);margin-bottom:3px;}
+.ec-name-txt{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.ec-phone-txt{font-size:13px;color:var(--muted);margin-bottom:14px;}
+.btn-call{display:block;width:100%;padding:10px;background:linear-gradient(90deg,#EF4444,#F97316);color:#fff;border-radius:10px;text-align:center;font-size:13px;font-weight:700;text-decoration:none;transition:opacity .2s;}
+.btn-call:hover{opacity:.88;}
+
+/* Right column */
+.right-col{display:flex;flex-direction:column;gap:18px;}
+.card{background:#fff;border-radius:20px;padding:26px;box-shadow:0 2px 14px rgba(0,0,0,.07);}
+.card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:18px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.field label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-bottom:3px;}
+.field span{font-size:14px;font-weight:600;color:var(--text);}
+.blood-field{background:#FEF2F2;border-radius:10px;padding:10px 14px;}
+.blood-field label{font-size:11px;color:var(--red);display:flex;align-items:center;gap:4px;margin-bottom:3px;}
+.blood-field span{font-size:16px;font-weight:800;color:var(--red);}
+
+.chronic-card{background:#fff;border:2px solid #FCA5A5;border-radius:20px;padding:22px;box-shadow:0 2px 10px rgba(239,68,68,.08);}
+.chronic-title{font-size:15px;font-weight:700;color:var(--red);display:flex;align-items:center;gap:7px;margin-bottom:14px;}
+.chronic-pill{background:#FEF2F2;color:#B91C1C;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:500;display:inline-block;}
+
+.addr-card{background:#fff;border-radius:20px;padding:22px;box-shadow:0 2px 14px rgba(0,0,0,.07);}
+.addr-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.addr-text{font-size:14px;color:var(--muted);}
+
+.btn-view-requests{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:15px;border-radius:14px;font-size:14px;font-weight:700;
+  border:none;cursor:pointer;
+  background:linear-gradient(90deg,#2DC98E,#3B82F6);color:#fff;
+  transition:all .25s;width:100%;
+}
+.btn-view-requests:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(45,201,142,.3);}
+
+/* ── REQUESTS SCREEN ── */
+.requests-wrap{max-width:920px;margin:0 auto;padding:32px 20px;}
+.req-banner{background:linear-gradient(135deg,#FFF1F2,#FFF7ED);border-radius:16px;padding:22px 26px;margin-bottom:26px;border-left:5px solid var(--red);}
+.req-banner-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.req-banner-pid{font-size:13px;color:var(--muted);}
+
+.req-card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 2px 12px rgba(0,0,0,.07);margin-bottom:16px;border:1px solid var(--border);animation:slideUp .35s ease both;}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.req-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.req-icon{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#FEF2F2,#FFF7ED);display:flex;align-items:center;justify-content:center;color:var(--red);flex-shrink:0;}
+.req-name{font-size:15px;font-weight:700;color:var(--text);}
+.req-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+.priority-badge{font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;}
+.priority-normal{background:#EFF6FF;color:var(--blue);}
+.priority-urgent{background:#FFF7ED;color:#EA580C;}
+.priority-stat{background:#FEF2F2;color:#DC2626;}
+
+.req-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.req-box{background:#F9FAFB;border-radius:12px;padding:13px 15px;}
+.detail-label{font-size:11px;color:var(--muted);margin-bottom:3px;}
+.detail-val{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.detail-sub{font-size:12px;color:var(--muted);}
+
+.req-notes{background:#EFF6FF;border-radius:12px;padding:13px 15px;margin-bottom:12px;font-size:13px;color:var(--text);}
+.notes-label{font-size:11px;color:var(--blue);font-weight:700;display:flex;align-items:center;gap:5px;margin-bottom:5px;}
+.btn-pdf{display:inline-flex;align-items:center;gap:6px;background:var(--blue);color:#fff;padding:8px 16px;border-radius:9px;font-size:12px;font-weight:600;text-decoration:none;transition:all .2s;}
+.btn-pdf:hover{background:#2563EB;}
+
+.empty-state{text-align:center;padding:56px 20px;color:var(--muted);background:#fff;border-radius:18px;box-shadow:0 2px 12px rgba(0,0,0,.07);}
+
+@media(max-width:720px){
+  .profile-grid{grid-template-columns:1fr;}
+  .info-grid,.req-grid{grid-template-columns:1fr;}
+  .navbar{padding:12px 16px;}
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="#" class="nav-brand">
+    <div class="nav-logo">💊</div>
+    <span class="nav-title">MedPass</span>
+  </a>
+  <div class="nav-right">
+    <button class="back-btn" onclick="window.history.back()">← Back</button>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ══ SCREEN 1: PATIENT PROFILE ══ -->
+<div class="screen active" id="screen-profile">
+  <div class="profile-wrap">
+    <div class="profile-grid">
+
+      <!-- LEFT -->
+      <div>
+        <div class="left-card">
+          <div class="avatar-section">
+            <div class="avatar-circle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+              </svg>
+            </div>
+            <div class="pt-name" id="pt-name">Loading…</div>
+            <div class="pt-pid"  id="pt-id">—</div>
+            <div class="blood-badge">
+              <div class="blood-lbl">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
+                Blood Type
+              </div>
+              <div class="blood-val" id="pt-blood-badge">—</div>
+            </div>
+          </div>
+
+          <div class="ec-section">
+            <div class="ec-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.64a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Emergency Contact
+            </div>
+            <div class="ec-label" id="pt-ec-label">Relation</div>
+            <div class="ec-name-txt"  id="pt-ec-name">—</div>
+            <div class="ec-phone-txt" id="pt-ec-phone">—</div>
+            <a href="#" id="btn-emergency-call" class="btn-call">Call Emergency Contact</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="right-col">
+
+        <!-- Personal Info -->
+        <div class="card">
+          <div class="card-title">Personal Information</div>
+          <div class="info-grid">
+            <div class="field">
+              <label><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> First Name</label>
+              <span id="pt-fname">—</span>
+            </div>
+            <div class="field">
+              <label><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Last Name</label>
+              <span id="pt-lname">—</span>
+            </div>
+            <div class="field">
+              <label><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Date of Birth</label>
+              <span id="pt-dob">—</span>
+            </div>
+            <div class="blood-field">
+              <label><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg> Blood Type</label>
+              <span id="pt-blood-card">—</span>
+            </div>
+            <div class="field">
+              <label><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12"/></svg> Phone</label>
+              <span id="pt-phone">—</span>
+            </div>
+            <div class="field">
+              <label><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Email</label>
+              <span id="pt-email">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chronic Diseases -->
+        <div class="chronic-card" id="chronic-section">
+          <div class="chronic-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Chronic Diseases
+          </div>
+          <span class="chronic-pill" id="pt-diseases">—</span>
+        </div>
+
+        <!-- Address -->
+        <div class="addr-card">
+          <div class="addr-title">Address</div>
+          <div class="addr-text" id="pt-address">—</div>
+        </div>
+
+        <!-- CTA -->
+        <button class="btn-view-requests" onclick="showScreen('screen-requests')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          View Doctor Requests →
+        </button>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN 2: DOCTOR REQUESTS ══ -->
+<div class="screen" id="screen-requests">
+  <div class="requests-wrap">
+    <div style="margin-bottom:20px;">
+      <button class="back-btn" onclick="showScreen('screen-profile')">← Patient Profile</button>
+    </div>
+    <div class="req-banner">
+      <div class="req-banner-title" id="requests-title">Doctor Requests</div>
+      <div class="req-banner-pid"   id="requests-pid">Patient ID: —</div>
+    </div>
+    <div id="requests-container">
+      <div class="empty-state">
+        <div style="font-size:32px;margin-bottom:8px;">⏳</div>
+        Loading requests…
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

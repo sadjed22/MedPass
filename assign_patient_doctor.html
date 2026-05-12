@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Assign Patient to Doctor - MedPass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+};
+const REQUIRED_ROLE = "Hospital";
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+document.documentElement.style.visibility = "hidden";
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.replace("login_page.html"); return; }
+  try {
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists) { await auth.signOut(); window.location.replace("login_page.html"); return; }
+    const profile = snap.data();
+    if (profile.role !== REQUIRED_ROLE || profile.status === "inactive") {
+      await auth.signOut(); window.location.replace("login_page.html"); return;
+    }
+    document.documentElement.style.visibility = "visible";
+    window.currentUser = user; window.currentProfile = profile;
+    initPage();
+  } catch(e) { window.location.replace("login_page.html"); }
+});
+async function logout() { await auth.signOut(); window.location.replace("login_page.html"); }
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E; --blue:#3B82F6; --purple:#8B5CF6; --teal:#14B8A6;
+  --red:#EF4444; --orange:#F97316; --text:#1a1a2e; --muted:#6B7280;
+  --border:#E5E7EB; --card-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);min-height:100vh;padding-bottom:110px;}
+
+.navbar{background:#fff;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100;}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:20px;font-weight:700;}
+.nav-brand-icon{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;}
+.nav-brand-text{color:var(--green);letter-spacing:-0.5px;}
+.nav-brand-sub{font-size:11px;color:var(--muted);font-weight:400;display:block;}
+.nav-right{display:flex;align-items:center;gap:24px;}
+.nav-link{display:flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);font-weight:500;font-size:14px;}
+.nav-link:hover{color:var(--green);}
+.btn-logout{display:flex;align-items:center;gap:6px;padding:8px 16px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;}
+.btn-logout:hover{background:#FEE2E2;}
+.container{max-width:1100px;margin:0 auto;padding:40px 20px;}
+.page-header{display:flex;align-items:center;gap:14px;margin-bottom:36px;}
+.back-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-weight:500;font-size:13px;}
+.back-btn:hover{background:#f9fafb;}
+.page-icon{width:50px;height:50px;background:var(--teal);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;}
+.page-title{font-size:22px;font-weight:700;color:var(--text);}
+.page-sub{font-size:13px;color:var(--muted);margin-top:2px;}
+
+/* ASSIGN CARD */
+.assign-card{background:#fff;border-radius:20px;padding:36px;box-shadow:var(--card-shadow);border:1px solid var(--border);margin-bottom:36px;}
+.assign-card h2{font-size:16px;font-weight:700;color:var(--text);margin-bottom:24px;display:flex;align-items:center;gap:8px;}
+
+/* MODE TOGGLE */
+.mode-toggle{display:flex;background:#f3f4f6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;}
+.mode-btn{display:flex;align-items:center;gap:7px;padding:9px 18px;border:none;background:none;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.mode-btn svg{width:15px;height:15px;}
+.mode-btn.active{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+
+/* MANUAL DROPDOWN */
+.search-wrap{position:relative;margin-top:6px;}
+.search-wrap input{width:100%;padding:11px 40px 11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;color:var(--text);background:#fff;transition:border-color .2s;outline:none;}
+.search-wrap input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(45,201,142,.1);}
+.search-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;width:16px;height:16px;}
+.clear-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:0;display:none;}
+.search-wrap input:not(:placeholder-shown) ~ .search-icon{display:none;}
+.search-wrap input:not(:placeholder-shown) ~ .clear-btn{display:flex;}
+.dropdown{position:absolute;top:calc(100%+6px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.1);max-height:240px;overflow-y:auto;z-index:200;display:none;}
+.dropdown.open{display:block;}
+.dropdown-item{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-bottom:1px solid #f3f4f6;transition:background .15s;}
+.dropdown-item:last-child{border-bottom:none;}
+.dropdown-item:hover{background:#f9fafb;}
+.item-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0;}
+.item-name{font-size:14px;font-weight:600;color:var(--text);}
+.item-meta{font-size:12px;color:var(--muted);}
+.dropdown-empty{padding:20px;text-align:center;color:var(--muted);font-size:13px;}
+.selected-chip{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(45,201,142,.06);border:1.5px solid rgba(45,201,142,.25);border-radius:10px;margin-top:8px;}
+.chip-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;flex-shrink:0;}
+.chip-name{font-size:13px;font-weight:600;color:var(--text);}
+.chip-meta{font-size:11px;color:var(--muted);}
+.chip-remove{background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;padding:0;margin-left:auto;}
+.chip-remove:hover{color:var(--red);}
+
+/* SCAN PANEL */
+.scan-panel{display:none;}
+.scan-methods{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.scan-method-btn{flex:1;min-width:140px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 16px;background:#fff;border:2px solid var(--border);border-radius:14px;cursor:pointer;transition:all .2s;font-size:13px;font-weight:600;color:var(--muted);}
+.scan-method-btn .sicon{font-size:28px;}
+.scan-method-btn:hover,.scan-method-btn.active{border-color:var(--green);color:var(--text);background:rgba(45,201,142,.04);}
+
+/* QR reader */
+.qr-reader-wrap{background:#000;border-radius:14px;overflow:hidden;position:relative;max-width:380px;margin:0 auto 12px;}
+#qr-reader{width:100%;}
+#qr-reader video{width:100%!important;}
+.qr-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.qr-frame{width:190px;height:190px;border:3px solid var(--green);border-radius:12px;position:relative;box-shadow:0 0 0 2000px rgba(0,0,0,.5);}
+.qr-corner{position:absolute;width:22px;height:22px;border-color:var(--green);border-style:solid;}
+.qr-corner.tl{top:-3px;left:-3px;border-width:4px 0 0 4px;border-radius:4px 0 0 0;}
+.qr-corner.tr{top:-3px;right:-3px;border-width:4px 4px 0 0;border-radius:0 4px 0 0;}
+.qr-corner.bl{bottom:-3px;left:-3px;border-width:0 0 4px 4px;border-radius:0 0 0 4px;}
+.qr-corner.br{bottom:-3px;right:-3px;border-width:0 4px 4px 0;border-radius:0 0 4px 0;}
+.qr-scan-line{position:absolute;left:4px;right:4px;height:2px;background:var(--green);animation:scanLine 2s linear infinite;}
+@keyframes scanLine{0%{top:4px;}50%{top:calc(100% - 6px);}100%{top:4px;}}
+.qr-status{text-align:center;font-size:13px;color:var(--muted);margin-bottom:10px;min-height:20px;}
+.btn-stop-scan{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;max-width:380px;margin:0 auto;padding:10px;background:#FEF2F2;color:#DC2626;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;}
+
+/* NFC panel */
+.nfc-box{text-align:center;padding:32px 20px;background:#f9fafb;border-radius:14px;margin-bottom:12px;}
+.nfc-icon{font-size:52px;margin-bottom:12px;display:block;animation:nfcPulse 1.6s ease-in-out infinite;}
+@keyframes nfcPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+.nfc-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.nfc-sub{font-size:13px;color:var(--muted);margin-bottom:16px;}
+.btn-nfc-start{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-nfc-stop{display:none;align-items:center;gap:8px;padding:10px 20px;background:#FEF2F2;color:#DC2626;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;}
+
+/* Scanned result card */
+.scanned-result{display:none;background:rgba(45,201,142,.06);border:1.5px solid rgba(45,201,142,.3);border-radius:14px;padding:16px 20px;margin-bottom:4px;}
+.sr-header{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.sr-avatar{width:44px;height:44px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;flex-shrink:0;}
+.sr-name{font-size:16px;font-weight:700;color:var(--text);}
+.sr-id{font-size:12px;color:var(--muted);}
+.sr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.sr-field label{font-size:11px;color:var(--muted);display:block;margin-bottom:2px;}
+.sr-field span{font-size:13px;font-weight:600;color:var(--text);}
+.btn-clear-scan{background:none;border:none;color:var(--red);font-size:12px;font-weight:600;cursor:pointer;margin-top:10px;padding:0;display:flex;align-items:center;gap:4px;}
+
+/* Doctor row */
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:20px;}
+.form-group label{font-size:13px;font-weight:600;color:var(--text);}
+.form-group .hint{font-size:11px;color:var(--muted);}
+.note-field{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;color:var(--text);resize:vertical;min-height:80px;outline:none;transition:border-color .2s;}
+.note-field:focus{border-color:var(--green);}
+
+.btn-assign{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:all .25s;margin-top:8px;}
+.btn-assign:hover:not(:disabled){background:#25b37c;transform:translateY(-1px);box-shadow:0 6px 20px rgba(45,201,142,.35);}
+.btn-assign:disabled{opacity:.55;cursor:not-allowed;transform:none;}
+.btn-assign .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+
+/* TABLE */
+.table-card{background:#fff;border-radius:20px;box-shadow:var(--card-shadow);border:1px solid var(--border);overflow:hidden;}
+.table-header{display:flex;align-items:center;justify-content:space-between;padding:24px 28px 20px;border-bottom:1px solid var(--border);}
+.table-header h2{font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;}
+.table-count{font-size:12px;font-weight:600;padding:4px 10px;background:rgba(45,201,142,.1);color:#059669;border-radius:20px;}
+.filter-bar{display:flex;align-items:center;gap:10px;padding:14px 28px;border-bottom:1px solid var(--border);background:#fafafa;}
+.filter-bar input{flex:1;max-width:280px;padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;}
+.filter-bar input:focus{border-color:var(--green);}
+.filter-select{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;outline:none;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:#fafafa;}
+th{padding:12px 20px;text-align:left;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+td{padding:14px 20px;font-size:13px;color:var(--text);border-top:1px solid #f3f4f6;vertical-align:middle;}
+tbody tr:hover{background:#fafefe;}
+.mini-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
+.td-cell{display:flex;align-items:center;gap:10px;}
+.td-name{font-weight:600;}
+.s-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(45,201,142,.1);color:#059669;}
+.s-dot{width:6px;height:6px;border-radius:50%;background:#2DC98E;}
+.btn-unassign{padding:5px 12px;background:#FEF2F2;color:#DC2626;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-unassign:hover{background:#FEE2E2;}
+.table-empty{padding:60px 20px;text-align:center;color:var(--muted);}
+
+/* TOAST */
+.toast-container{position:fixed;bottom:90px;right:28px;display:flex;flex-direction:column;gap:10px;z-index:9999;}
+.toast{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.12);animation:slideIn .3s ease;min-width:260px;max-width:380px;background:#fff;}
+.toast-success{border-left:4px solid var(--green);}
+.toast-error{border-left:4px solid var(--red);}
+
+/* FOOTER */
+footer{background:#1a1a2e;color:#fff;padding:24px 20px;border-top:1px solid rgba(255,255,255,.1);position:fixed;bottom:0;left:0;right:0;z-index:99;}
+.footer-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.footer-text{font-size:13px;color:rgba(255,255,255,.5);}
+.footer-links{display:flex;gap:20px;}
+.footer-link{color:rgba(255,255,255,.5);text-decoration:none;font-size:12px;}
+.footer-link:hover{color:#fff;}
+
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
+@media(max-width:768px){
+  .navbar{padding:16px 20px;} .container{padding:24px 16px;}
+  th:nth-child(4),td:nth-child(4){display:none;}
+}
+@media(max-width:600px){
+  .navbar{flex-direction:column;gap:16px;align-items:flex-start;}
+  .nav-right{width:100%;justify-content:flex-end;}
+  th:nth-child(3),td:nth-child(3){display:none;}
+  .scan-methods{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="hospital_dashboard.html" class="nav-brand">
+    <div class="nav-brand-icon">🏥</div>
+    <div><div class="nav-brand-text">MedPass</div><span class="nav-brand-sub">Hospital Portal</span></div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home
+    </a>
+    <button class="btn-logout" onclick="logout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Logout
+    </button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <div class="page-header">
+    <a href="hospital_dashboard.html" class="back-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="15 18 9 12 15 6"/></svg>Back
+    </a>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="page-icon">🔗</div>
+      <div>
+        <div class="page-title">Assign Patient to Doctor</div>
+        <div class="page-sub">Link patients with their treating physicians</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="assign-card">
+    <h2><span>➕</span> New Assignment</h2>
+
+    <!-- ════ PATIENT SELECTION ════ -->
+    <div style="margin-bottom:28px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;">Select Patient via</div>
+
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeManualBtn" onclick="setMode('manual')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Manual Search
+        </button>
+        <button class="mode-btn" id="modeScanBtn" onclick="setMode('scan')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><line x1="21" y1="21" x2="21" y2="21"/></svg>Scan QR / NFC
+        </button>
+      </div>
+
+      <!-- MANUAL -->
+      <div id="manualPanel">
+        <div class="search-wrap">
+          <input type="text" id="patientSearch" placeholder="Search patients by name or ID…" autocomplete="off"
+            oninput="filterList('patient')" onfocus="openDropdown('patient')"/>
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <button class="clear-btn" onclick="clearSel('patient')">×</button>
+          <div class="dropdown" id="patientDropdown"></div>
+        </div>
+        <div id="patientChip" style="display:none;"></div>
+      </div>
+
+      <!-- SCAN -->
+      <div class="scan-panel" id="scanPanel">
+        <!-- Method picker -->
+        <div class="scan-methods" id="scanPicker">
+          <button class="scan-method-btn" id="btnQRMethod" onclick="activateScanMethod('qr')">
+            <span class="sicon">📷</span>
+            Scan QR Code
+            <span style="font-size:11px;font-weight:400;color:var(--muted);">Use device camera</span>
+          </button>
+          <button class="scan-method-btn" id="btnNFCMethod" onclick="activateScanMethod('nfc')">
+            <span class="sicon">📶</span>
+            Tap NFC Card
+            <span style="font-size:11px;font-weight:400;color:var(--muted);">Hold card to device</span>
+          </button>
+        </div>
+
+        <!-- QR -->
+        <div id="qrSection" style="display:none;">
+          <div class="qr-reader-wrap">
+            <div id="qr-reader"></div>
+            <div class="qr-overlay">
+              <div class="qr-frame">
+                <div class="qr-corner tl"></div><div class="qr-corner tr"></div>
+                <div class="qr-corner bl"></div><div class="qr-corner br"></div>
+                <div class="qr-scan-line"></div>
+              </div>
+            </div>
+          </div>
+          <p class="qr-status" id="qrStatus">Point camera at the patient's QR code…</p>
+          <button class="btn-stop-scan" onclick="stopQR()">✕ Stop Scanning</button>
+        </div>
+
+        <!-- NFC -->
+        <div id="nfcSection" style="display:none;">
+          <div class="nfc-box">
+            <span class="nfc-icon" id="nfcIcon">📶</span>
+            <div class="nfc-title" id="nfcTitle">Ready to Scan</div>
+            <div class="nfc-sub" id="nfcSub">Hold the patient's MedPass card near the back of your device</div>
+            <button class="btn-nfc-start" id="btnNfcStart" onclick="startNFC()">Start NFC Scan</button>
+            <button class="btn-nfc-stop" id="btnNfcStop" onclick="stopNFC()">Stop Scanning</button>
+          </div>
+        </div>
+
+        <!-- Scanned patient result -->
+        <div class="scanned-result" id="scannedResult">
+          <div class="sr-header">
+            <div class="sr-avatar" id="srAvatar">?</div>
+            <div><div class="sr-name" id="srName">—</div><div class="sr-id" id="srPatId">—</div></div>
+          </div>
+          <div class="sr-grid">
+            <div class="sr-field"><label>Age</label><span id="srAge">—</span></div>
+            <div class="sr-field"><label>Blood Type</label><span id="srBlood">—</span></div>
+            <div class="sr-field"><label>Status</label><span id="srStatus">—</span></div>
+          </div>
+          <button class="btn-clear-scan" onclick="clearScan()">✕ Clear &amp; scan again</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ DOCTOR SELECTION ════ -->
+    <div class="form-group">
+      <label>Doctor</label>
+      <span class="hint">Search by name or specialty</span>
+      <div class="search-wrap">
+        <input type="text" id="doctorSearch" placeholder="Search doctors…" autocomplete="off"
+          oninput="filterList('doctor')" onfocus="openDropdown('doctor')"/>
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <button class="clear-btn" onclick="clearSel('doctor')">×</button>
+        <div class="dropdown" id="doctorDropdown"></div>
+      </div>
+      <div id="doctorChip" style="display:none;"></div>
+    </div>
+
+    <!-- NOTE -->
+    <div class="form-group">
+      <label>Note <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <textarea class="note-field" id="assignNote" placeholder="Reason for referral, urgency, special instructions…"></textarea>
+    </div>
+
+    <button class="btn-assign" id="assignBtn" onclick="submitAssignment()" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Confirm Assignment
+    </button>
+  </div>
+
+  <!-- ASSIGNMENTS TABLE -->
+  <div class="table-card">
+    <div class="table-header">
+      <h2><span>📋</span> Current Assignments</h2>
+      <span class="table-count" id="assignCount">Loading…</span>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="tableSearch" placeholder="🔍  Filter by patient or doctor…" oninput="filterTable()"/>
+      <select class="filter-select" id="statusFilter" onchange="filterTable()">
+        <option value="">All Statuses</option>
+        <option value="active">Active</option>
+        <option value="pending">Pending</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Patient</th><th>Doctor</th><th>Specialty</th><th>Assigned</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="assignmentsBody">
+          <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);">
+            <div style="display:inline-flex;align-items:center;gap:10px;">
+              <div style="width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;"></div>Loading…
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <span class="footer-text">© 2026 MedPass. All rights reserved.</span>
+    <div class="footer-links">
+      <a href="#" class="footer-link">Privacy Policy</a>
+      <a href="#" class="footer-link">Terms of Service</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ── STATE ──
+let allPatients=[],allDoctors=[],allAssignments=[],filteredAssignments=[];
+let selectedPatient=null,selectedDoctor=null;
+let inputMode='manual';
+let qrScanner=null,nfcAbort=null;
+
+const COLORS=['#2DC98E','#3B82F6','#8B5CF6','#14B8A6','#F97316','#EC4899','#EF4444','#6366F1'];
+function clr(s){let h=0;for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h);return COLORS[Math.abs(h)%COLORS.length];}
+function ini(n){if(!n)return'?';const p=n.trim().split(' ');return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();}
+function fmtDate(ts){if(!ts)return'—';const d=ts.toDate?ts.toDate():new Date(ts);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── INIT ──
+async function initPage(){await Promise.all([fetchPatients(),fetchDoctors(),fetchAssignments()]);}
+
+async function fetchPatients(){
+  try{const s=await db.collection("users").where("role","==","Patient").get();
+    allPatients=s.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.status!=="inactive");}
+  catch(e){showToast('Could not load patients: '+e.message,'error');}
+}
+async function fetchDoctors(){
+  try{const s=await db.collection("users").where("role","==","Doctor").get();
+    allDoctors=s.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.status!=="inactive");}
+  catch(e){showToast('Could not load doctors: '+e.message,'error');}
+}
+async function fetchAssignments(){
+  try{const s=await db.collection("assignments").orderBy("assignedAt","desc").get();
+    allAssignments=s.docs.map(d=>({id:d.id,...d.data()}));filteredAssignments=[...allAssignments];renderTable();}
+  catch(e){allAssignments=[];filteredAssignments=[];renderTable();}
+}
+
+// ── MODE SWITCH ──
+function setMode(m){
+  inputMode=m;
+  document.getElementById('modeManualBtn').classList.toggle('active',m==='manual');
+  document.getElementById('modeScanBtn').classList.toggle('active',m==='scan');
+  document.getElementById('manualPanel').style.display=m==='manual'?'block':'none';
+  document.getElementById('scanPanel').style.display=m==='scan'?'block':'none';
+  if(m==='manual'){stopQR();stopNFC();}
+  selectedPatient=null; checkBtn();
+}
+
+// ── QR ──
+function activateScanMethod(type){
+  document.getElementById('qrSection').style.display=type==='qr'?'block':'none';
+  document.getElementById('nfcSection').style.display=type==='nfc'?'block':'none';
+  document.getElementById('btnQRMethod').classList.toggle('active',type==='qr');
+  document.getElementById('btnNFCMethod').classList.toggle('active',type==='nfc');
+  document.getElementById('scannedResult').style.display='none';
+  if(type==='qr') launchQR(); else stopQR();
+  if(type==='nfc') stopQR(); 
+}
+
+function launchQR(){
+  if(qrScanner){try{qrScanner.stop();}catch(e){}}
+  qrScanner=new Html5Qrcode("qr-reader");
+  qrScanner.start({facingMode:"environment"},{fps:10,qrbox:{width:190,height:190}},
+    text=>onQRSuccess(text),
+    ()=>{}
+  ).catch(()=>{document.getElementById('qrStatus').textContent='⚠️ Camera access denied.';});
+}
+
+async function onQRSuccess(text){
+  document.getElementById('qrStatus').textContent='✅ QR detected! Looking up patient…';
+  stopQR();
+  let pid=text.trim();
+  try{const p=JSON.parse(text);pid=p.id||p.uid||p.patientId||text;}catch(e){}
+  await lookupPatient(pid);
+}
+
+function stopQR(){
+  if(qrScanner){try{qrScanner.stop().then(()=>{qrScanner.clear();qrScanner=null;});}catch(e){qrScanner=null;}}
+  document.getElementById('qrSection').style.display='none';
+}
+
+// ── NFC ──
+async function startNFC(){
+  if(!('NDEFReader' in window)){showToast('NFC not supported on this device.','error');return;}
+  document.getElementById('nfcTitle').textContent='Scanning…';
+  document.getElementById('nfcSub').textContent='Hold the MedPass card flat against the back of your device';
+  document.getElementById('btnNfcStart').style.display='none';
+  document.getElementById('btnNfcStop').style.display='inline-flex';
+  document.getElementById('nfcIcon').textContent='📡';
+  try{
+    const ndef=new NDEFReader();
+    nfcAbort=new AbortController();
+    await ndef.scan({signal:nfcAbort.signal});
+    ndef.addEventListener("reading",({message})=>{
+      for(const r of message.records){
+        const dec=new TextDecoder(r.encoding||"utf-8");
+        if(r.recordType==="text"){onNFCRead(dec.decode(r.data));return;}
+        if(r.recordType==="url"){
+          try{const u=new URL(dec.decode(r.data));const pid=u.searchParams.get('id')||u.searchParams.get('uid')||u.searchParams.get('patientId');if(pid){onNFCRead(pid);return;}}catch(e){}
+        }
+      }
+      showToast('NFC read but no patient data found.','error');
+    });
+  }catch(err){showToast('NFC Error: '+err.message,'error');stopNFC();}
+}
+
+async function onNFCRead(text){
+  stopNFC();
+  document.getElementById('nfcTitle').textContent='✅ Card detected!';
+  await lookupPatient(text.trim());
+}
+
+function stopNFC(){
+  if(nfcAbort){nfcAbort.abort();nfcAbort=null;}
+  document.getElementById('btnNfcStart').style.display='inline-flex';
+  document.getElementById('btnNfcStop').style.display='none';
+  document.getElementById('nfcTitle').textContent='Ready to Scan';
+  document.getElementById('nfcSub').textContent='Hold the patient\'s MedPass card near the back of your device';
+  document.getElementById('nfcIcon').textContent='📶';
+}
+
+// ── PATIENT LOOKUP (after scan) ──
+async function lookupPatient(rawId){
+  try{
+    let data=null;
+    // Try direct doc ID
+    const direct=await db.collection('users').doc(rawId).get();
+    if(direct.exists&&direct.data().role==='Patient'){data={id:direct.id,...direct.data()};}
+    else{
+      // Try patientId field
+      const s=await db.collection('users').where('role','==','Patient').where('patientId','==',rawId).limit(1).get();
+      if(!s.empty)data={id:s.docs[0].id,...s.docs[0].data()};
+    }
+    if(data){selectedPatient=data;showScannedCard(data);checkBtn();}
+    else{showToast('No patient found for this card.','error');}
+  }catch(e){showToast('Lookup error: '+e.message,'error');}
+}
+
+function showScannedCard(p){
+  const name=p.fullName||p.name||'Unknown';
+  document.getElementById('srAvatar').textContent=ini(name);
+  document.getElementById('srAvatar').style.background=clr(p.id);
+  document.getElementById('srName').textContent=name;
+  document.getElementById('srPatId').textContent='ID: '+(p.patientId||p.id||'—');
+  document.getElementById('srAge').textContent=p.age||'—';
+  document.getElementById('srBlood').textContent=p.bloodType||'—';
+  document.getElementById('srStatus').textContent=p.status||'—';
+  document.getElementById('scannedResult').style.display='block';
+  document.getElementById('scanPicker').style.display='none';
+  document.getElementById('qrSection').style.display='none';
+  document.getElementById('nfcSection').style.display='none';
+}
+
+function clearScan(){
+  selectedPatient=null;
+  document.getElementById('scannedResult').style.display='none';
+  document.getElementById('scanPicker').style.display='flex';
+  document.getElementById('btnQRMethod').classList.remove('active');
+  document.getElementById('btnNFCMethod').classList.remove('active');
+  checkBtn();
+}
+
+// ── MANUAL DROPDOWN ──
+function openDropdown(type){
+  if(type==='patient'&&!selectedPatient) renderDD('patient',document.getElementById('patientSearch').value);
+  if(type==='doctor'&&!selectedDoctor)   renderDD('doctor', document.getElementById('doctorSearch').value);
+}
+function filterList(type){renderDD(type,document.getElementById(type+'Search').value);}
+function renderDD(type,q=''){
+  const dd=document.getElementById(type+'Dropdown');
+  const list=type==='patient'?allPatients:allDoctors;
+  const filtered=q?list.filter(i=>{
+    const n=(i.fullName||i.name||'').toLowerCase();
+    const x=type==='patient'?(i.patientId||i.id||'').toLowerCase():(i.specialty||i.specialization||'').toLowerCase();
+    return n.includes(q.toLowerCase())||x.includes(q.toLowerCase());
+  }):list;
+  dd.innerHTML=filtered.length?filtered.slice(0,40).map(item=>{
+    const name=item.fullName||item.name||'Unknown';
+    const meta=type==='patient'?(item.patientId||item.id||'').slice(0,14):(item.specialty||item.specialization||item.department||'General');
+    return`<div class="dropdown-item" onclick="pickItem('${type}','${item.id}')">
+      <div class="item-avatar" style="background:${clr(item.id)}">${ini(name)}</div>
+      <div><div class="item-name">${esc(name)}</div><div class="item-meta">${esc(type==='patient'?'ID: '+meta:meta)}</div></div>
+    </div>`;
+  }).join(''):`<div class="dropdown-empty">${q?'No results':'Start typing to search…'}</div>`;
+  dd.classList.add('open');
+}
+function pickItem(type,id){
+  const list=type==='patient'?allPatients:allDoctors;
+  const item=list.find(x=>x.id===id); if(!item)return;
+  if(type==='patient'){selectedPatient=item;document.getElementById('patientSearch').value=item.fullName||item.name||'';}
+  else{selectedDoctor=item;document.getElementById('doctorSearch').value=item.fullName||item.name||'';}
+  document.getElementById(type+'Dropdown').classList.remove('open');
+  renderChip(type,item); checkBtn();
+}
+function renderChip(type,item){
+  const name=item.fullName||item.name||'Unknown';
+  const meta=type==='patient'?'ID: '+(item.patientId||item.id||'').slice(0,14):(item.specialty||item.specialization||'General');
+  const c=document.getElementById(type+'Chip');
+  c.innerHTML=`<div class="selected-chip">
+    <div class="chip-avatar" style="background:${clr(item.id)}">${ini(name)}</div>
+    <div style="flex:1"><div class="chip-name">${esc(name)}</div><div class="chip-meta">${esc(meta)}</div></div>
+    <button class="chip-remove" onclick="clearSel('${type}')">×</button>
+  </div>`;
+  c.style.display='block';
+  document.getElementById(type+'Search').style.display='none';
+}
+function clearSel(type){
+  if(type==='patient'){selectedPatient=null;document.getElementById('patientSearch').value='';document.getElementById('patientSearch').style.display='';document.getElementById('patientChip').style.display='none';document.getElementById('patientDropdown').classList.remove('open');}
+  else{selectedDoctor=null;document.getElementById('doctorSearch').value='';document.getElementById('doctorSearch').style.display='';document.getElementById('doctorChip').style.display='none';document.getElementById('doctorDropdown').classList.remove('open');}
+  checkBtn();
+}
+document.addEventListener('click',e=>{
+  ['patient','doctor'].forEach(t=>{
+    const w=document.getElementById(t+'Search')?.closest('.search-wrap');
+    if(w&&!w.contains(e.target))document.getElementById(t+'Dropdown')?.classList.remove('open');
+  });
+});
+function checkBtn(){document.getElementById('assignBtn').disabled=!(selectedPatient&&selectedDoctor);}
+
+// ── SUBMIT ──
+async function submitAssignment(){
+  if(!selectedPatient||!selectedDoctor)return;
+  const btn=document.getElementById('assignBtn');
+  btn.disabled=true; btn.innerHTML=`<div class="spinner"></div> Saving…`;
+  try{
+    const pName=selectedPatient.fullName||selectedPatient.name||'Unknown';
+    const dName=selectedDoctor.fullName||selectedDoctor.name||'Unknown';
+    await db.collection("assignments").add({
+      patientId:selectedPatient.id, patientName:pName,
+      doctorId:selectedDoctor.id,   doctorName:dName,
+      doctorSpecialty:selectedDoctor.specialty||selectedDoctor.specialization||'General',
+      note:document.getElementById('assignNote').value.trim(),
+      status:'active',
+      assignedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      assignedBy:window.currentUser?.uid,
+      assignedByName:window.currentProfile?.fullName||'Hospital',
+      inputMethod:inputMode,
+    });
+    showToast(`✅ ${pName} assigned to Dr. ${dName}`,'success');
+    if(inputMode==='manual')clearSel('patient'); else clearScan();
+    clearSel('doctor');
+    document.getElementById('assignNote').value='';
+    await fetchAssignments();
+  }catch(e){showToast('Error: '+e.message,'error');}
+  btn.disabled=false;
+  btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Confirm Assignment`;
+}
+
+// ── TABLE ──
+function filterTable(){
+  const q=document.getElementById('tableSearch').value.toLowerCase();
+  const st=document.getElementById('statusFilter').value;
+  filteredAssignments=allAssignments.filter(a=>
+    (!q||(a.patientName||'').toLowerCase().includes(q)||(a.doctorName||'').toLowerCase().includes(q))&&
+    (!st||a.status===st));
+  renderTable();
+}
+function renderTable(){
+  const tb=document.getElementById('assignmentsBody');
+  document.getElementById('assignCount').textContent=filteredAssignments.length+' record'+(filteredAssignments.length!==1?'s':'');
+  if(!filteredAssignments.length){tb.innerHTML=`<tr><td colspan="6"><div class="table-empty"><div style="font-size:40px;margin-bottom:12px;">📭</div><p>No assignments found</p></div></td></tr>`;return;}
+  tb.innerHTML=filteredAssignments.map(a=>{
+    const scanBadge=a.inputMethod==='scan'?'<span style="font-size:10px;background:rgba(20,184,166,.1);color:#0d9488;padding:1px 6px;border-radius:10px;margin-left:6px;">📷 Scanned</span>':'';
+    return`<tr>
+      <td><div class="td-cell"><div class="mini-avatar" style="background:${clr(a.patientId||'')}">${ini(a.patientName)}</div><span class="td-name">${esc(a.patientName||'—')}${scanBadge}</span></div></td>
+      <td><div class="td-cell"><div class="mini-avatar" style="background:${clr(a.doctorId||'')}">${ini(a.doctorName)}</div><span class="td-name">Dr. ${esc(a.doctorName||'—')}</span></div></td>
+      <td><span style="font-size:12px;color:var(--muted)">${esc(a.doctorSpecialty||'General')}</span></td>
+      <td><span style="font-size:12px;color:var(--muted)">${fmtDate(a.assignedAt)}</span></td>
+      <td><span class="s-badge"><span class="s-dot"></span>${esc(a.status||'active')}</span></td>
+      <td><button class="btn-unassign" onclick="unassign('${a.id}','${esc(a.patientName||'')}','${esc(a.doctorName||'')}')">Unassign</button></td>
+    </tr>`;
+  }).join('');
+}
+async function unassign(id,pn,dn){
+  if(!confirm(`Remove assignment of ${pn} from Dr. ${dn}?`))return;
+  try{await db.collection("assignments").doc(id).delete();showToast(`Removed ${pn}`,'success');await fetchAssignments();}
+  catch(e){showToast('Error: '+e.message,'error');}
+}
+
+// ── TOAST ──
+function showToast(msg,type='success'){
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');
+  t.className=`toast toast-${type}`;
+  t.innerHTML=`<span>${type==='success'?'✅':'❌'}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.animation='slideIn .3s ease reverse';setTimeout(()=>t.remove(),300);},3500);
+}
+</script>
+</body>
+</html>

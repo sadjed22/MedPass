@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Technical Support - MedPass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// Hide everything until auth state is known
+document.documentElement.style.visibility = 'hidden';
+auth.onAuthStateChanged(user => {
+  document.documentElement.style.visibility = 'visible';
+  if (user) {
+    showFormView(user);
+  } else {
+    showLoginView();
+  }
+});
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;--blue:#3B82F6;--purple:#8B5CF6;
+  --teal:#14B8A6;--red:#EF4444;--text:#1a1a2e;
+  --muted:#6B7280;--border:#E5E7EB;--white:#FFFFFF;
+  --orange:#F97316;
+}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 100%);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:30px 16px 60px;
+}
+
+/* BACK */
+.back-row{width:100%;max-width:520px;margin-bottom:20px;}
+.back-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#fff;border:1px solid var(--border);border-radius:10px;
+  padding:8px 14px;font-size:14px;font-weight:500;color:var(--text);
+  text-decoration:none;cursor:pointer;transition:all .2s;
+}
+.back-btn:hover{background:#f9fafb;border-color:#9CA3AF;}
+
+/* CARD */
+.card{
+  background:#fff;
+  border-radius:24px;
+  width:100%;max-width:520px;
+  padding:40px 40px 44px;
+  box-shadow:0 4px 32px rgba(0,0,0,.08);
+}
+
+/* ICON */
+.icon-wrap{
+  width:64px;height:64px;
+  background:linear-gradient(135deg,#F97316,#EF4444);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;
+  margin:0 auto 20px;
+  box-shadow:0 8px 24px rgba(249,115,22,.3);
+}
+
+.card-title{text-align:center;font-size:24px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:-0.5px;}
+.card-sub{text-align:center;font-size:14px;color:var(--muted);margin-bottom:32px;}
+
+/* FORM */
+.form-group{margin-bottom:18px;}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:7px;}
+.input-wrap{position:relative;display:flex;align-items:center;}
+.input-icon{position:absolute;left:14px;font-size:16px;color:#9CA3AF;pointer-events:none;line-height:1;}
+.form-input,
+.form-textarea,
+.form-select{
+  width:100%;padding:12px 14px 12px 42px;
+  border:1.5px solid var(--border);border-radius:12px;
+  font-size:14px;font-family:'Inter',sans-serif;
+  background:#FAFAFA;color:var(--text);
+  transition:all .2s;
+  outline:none;
+}
+.form-select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-color:#FAFAFA;padding-right:36px;}
+.form-textarea{min-height:120px;resize:vertical;padding-top:12px;line-height:1.5;}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--orange);background:#fff;box-shadow:0 0 0 3px rgba(249,115,22,.1);}
+.form-input.error,.form-textarea.error,.form-select.error{border-color:var(--red);}
+
+/* SUBMIT */
+.btn-submit{
+  width:100%;padding:15px;margin-top:8px;
+  background:linear-gradient(90deg,#F97316,#EF4444);
+  color:#fff;border:none;border-radius:12px;
+  font-size:16px;font-weight:700;cursor:pointer;
+  transition:all .3s;box-shadow:0 4px 16px rgba(249,115,22,.3);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-submit:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(249,115,22,.4);}
+.btn-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+
+/* SPINNER */
+.spinner{
+  width:18px;height:18px;
+  border:2px solid rgba(255,255,255,.4);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  display:none;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* SUCCESS */
+.success-state{text-align:center;display:none;}
+.success-icon-wrap{
+  width:72px;height:72px;
+  background:linear-gradient(135deg,#2DC98E,#14B8A6);
+  border-radius:50%;margin:0 auto 20px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:32px;box-shadow:0 8px 24px rgba(45,201,142,.3);
+}
+.success-state h3{font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.success-state p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:24px;}
+.ticket-badge{
+  display:inline-block;
+  background:#F0FDF9;border:1.5px solid #A7F3D0;
+  color:#065F46;padding:10px 20px;border-radius:10px;
+  font-size:14px;font-weight:600;margin-bottom:28px;
+}
+.btn-new{
+  background:#F3F4F6;color:var(--text);border:none;
+  padding:12px 28px;border-radius:10px;font-size:14px;
+  font-weight:600;cursor:pointer;transition:background .2s;
+}
+.btn-new:hover{background:#E5E7EB;}
+
+/* LOGIN VIEW */
+#loginView{display:none;}
+#mainView{display:none;}
+
+.login-divider{
+  display:flex;align-items:center;gap:10px;
+  margin:18px 0;color:var(--muted);font-size:12px;font-weight:500;
+}
+.login-divider::before,.login-divider::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.user-badge{
+  display:flex;align-items:center;gap:10px;
+  background:#F0FDF9;border:1.5px solid #A7F3D0;
+  border-radius:12px;padding:12px 16px;margin-bottom:24px;
+}
+.user-badge-avatar{
+  width:36px;height:36px;background:var(--green);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.user-badge-name{font-size:14px;font-weight:600;color:#065F46;}
+.user-badge-email{font-size:12px;color:#047857;margin-top:1px;}
+.btn-logout-small{
+  margin-left:auto;background:none;border:none;
+  font-size:12px;color:var(--muted);cursor:pointer;
+  padding:4px 8px;border-radius:6px;transition:background .2s;
+}
+.btn-logout-small:hover{background:#E5E7EB;color:var(--text);}
+
+/* show password toggle */
+.pw-toggle{
+  position:absolute;right:14px;background:none;border:none;
+  cursor:pointer;font-size:16px;color:#9CA3AF;line-height:1;
+  padding:0;
+}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);
+  background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:12px;
+  font-size:14px;display:flex;align-items:center;gap:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.15);transition:transform .3s;z-index:999;
+  white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.error{background:#DC2626;}
+
+@media(max-width:560px){.card{padding:28px 20px 32px;}}
+</style>
+</head>
+<body>
+
+<div class="back-row">
+  <a href="#" class="back-btn" onclick="goBack(event)">← Back</a>
+</div>
+
+<!-- ═══ LOGIN VIEW ═══ -->
+<div id="loginView">
+  <div class="card">
+    <div class="icon-wrap">🎧</div>
+    <h1 class="card-title">Technical Support Request</h1>
+    <p class="card-sub">Login to request technical support</p>
+
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <div class="input-wrap">
+        <span class="input-icon">👤</span>
+        <input id="loginEmail" class="form-input" type="email" placeholder="your@email.com" autocomplete="username"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input id="loginPassword" class="form-input" type="password" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter') doLogin()"/>
+        <button class="pw-toggle" type="button" onclick="togglePw()" id="pwToggle">👁</button>
+      </div>
+    </div>
+
+    <button class="btn-submit" id="loginBtn" onclick="doLogin()">
+      <span id="loginText">Login</span>
+      <div class="spinner" id="loginSpinner"></div>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ MAIN VIEW (form + success) ═══ -->
+<div id="mainView">
+  <div class="card">
+    <div class="icon-wrap">🎧</div>
+    <h1 class="card-title">Technical Support Request</h1>
+    <p class="card-sub">Complete the form to request technical support</p>
+
+    <!-- logged-in user badge -->
+    <div class="user-badge" id="userBadge">
+      <div class="user-badge-avatar">👤</div>
+      <div>
+        <div class="user-badge-name" id="badgeName">Loading…</div>
+        <div class="user-badge-email" id="badgeEmail"></div>
+      </div>
+      <button class="btn-logout-small" onclick="doLogout()">Logout</button>
+    </div>
+
+    <!-- FORM -->
+    <div id="formSection">
+      <div class="form-group">
+        <label class="form-label">Organization Name</label>
+        <div class="input-wrap">
+          <span class="input-icon">🏢</span>
+          <input id="orgName" class="form-input" type="text" placeholder="e.g., Algiers Central Hospital"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Organization ID</label>
+        <div class="input-wrap">
+          <span class="input-icon">📄</span>
+          <input id="orgId" class="form-input" type="text" placeholder="e.g., HOS-001, PHR-001"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Organization Address</label>
+        <div class="input-wrap" style="align-items:flex-start;">
+          <span class="input-icon" style="top:14px;position:absolute;">📍</span>
+          <textarea id="orgAddress" class="form-textarea" placeholder="Full address of your organization" style="padding-left:42px;"></textarea>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Contact Phone</label>
+        <div class="input-wrap">
+          <span class="input-icon">📞</span>
+          <input id="contactPhone" class="form-input" type="tel" placeholder="+213 555 123 456"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Type of Service Needed</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔧</span>
+          <select id="serviceType" class="form-select">
+            <option value="">Select service type</option>
+            <option value="Card Activation Issue">Card Activation Issue</option>
+            <option value="Account Access Problem">Account Access Problem</option>
+            <option value="Payment Issue">Payment Issue</option>
+            <option value="NFC / QR Code Problem">NFC / QR Code Problem</option>
+            <option value="Data Sync Issue">Data Sync Issue</option>
+            <option value="System Error / Bug">System Error / Bug</option>
+            <option value="Feature Request">Feature Request</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description of Support Needed</label>
+        <div class="input-wrap" style="align-items:flex-start;">
+          <span class="input-icon" style="top:14px;position:absolute;">📝</span>
+          <textarea id="description" class="form-textarea" placeholder="Provide a detailed description of the support you need..." style="padding-left:42px;min-height:140px;"></textarea>
+        </div>
+      </div>
+
+      <button class="btn-submit" id="submitBtn" onclick="submitRequest()">
+        <span id="submitText">Submit Request</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+    </div>
+
+    <!-- SUCCESS -->
+    <div class="success-state" id="successSection">
+      <div class="success-icon-wrap">✅</div>
+      <h3>Request Submitted!</h3>
+      <p>Your support request has been received.<br/>Our team will contact you shortly.</p>
+      <div class="ticket-badge" id="ticketBadge">Ticket #SUP-000000</div>
+      <button class="btn-new" onclick="resetForm()">Submit Another Request</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Smart back button ────────────────────────────────────────
+function goBack(e) {
+  e.preventDefault();
+  if (document.referrer && document.referrer !== window.location.href) {
+    window.location.href = document.referrer;
+  } else {
+    window.location.href = 'home_page.html';
+  }
+}
+
+// ── View switching ────────────────────────────────────────────
+function showLoginView() {
+  document.getElementById('loginView').style.display = 'block';
+  document.getElementById('mainView').style.display  = 'none';
+  // Always reset login button so it works after logout
+  const btn = document.getElementById('loginBtn');
+  if (btn) btn.disabled = false;
+  const lt = document.getElementById('loginText');
+  if (lt) lt.textContent = 'Login';
+  const ls = document.getElementById('loginSpinner');
+  if (ls) ls.style.display = 'none';
+  // Clear fields
+  const em = document.getElementById('loginEmail');
+  const pw = document.getElementById('loginPassword');
+  if (em) { em.value = ''; em.classList.remove('error'); }
+  if (pw) { pw.value = ''; pw.classList.remove('error'); pw.type = 'password'; }
+  const pt = document.getElementById('pwToggle');
+  if (pt) pt.textContent = '👁';
+}
+
+function showFormView(user) {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('mainView').style.display  = 'block';
+  // Populate user badge
+  document.getElementById('badgeEmail').textContent = user.email || '';
+  // Try to fetch display name from Firestore
+  db.collection('users').doc(user.uid).get().then(snap => {
+    const name = snap.exists ? (snap.data().name || user.displayName || user.email) : (user.displayName || user.email);
+    document.getElementById('badgeName').textContent = name;
+  }).catch(() => {
+    document.getElementById('badgeName').textContent = user.displayName || user.email;
+  });
+}
+
+// ── Login ─────────────────────────────────────────────────────
+async function doLogin() {
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  document.getElementById('loginEmail').classList.remove('error');
+  document.getElementById('loginPassword').classList.remove('error');
+
+  if (!email)    { document.getElementById('loginEmail').classList.add('error');    showToast('Please enter your email.','error'); return; }
+  if (!password) { document.getElementById('loginPassword').classList.add('error'); showToast('Please enter your password.','error'); return; }
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  document.getElementById('loginText').textContent = 'Logging in…';
+  document.getElementById('loginSpinner').style.display = 'block';
+
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged will call showFormView automatically
+  } catch(err) {
+    btn.disabled = false;
+    document.getElementById('loginText').textContent = 'Login';
+    document.getElementById('loginSpinner').style.display = 'none';
+    const msgs = {
+      'auth/user-not-found':    'No account found with this email.',
+      'auth/wrong-password':    'Incorrect password.',
+      'auth/invalid-email':     'Invalid email address.',
+      'auth/too-many-requests': 'Too many attempts. Try again later.',
+      'auth/invalid-credential':'Invalid email or password.',
+    };
+    showToast(msgs[err.code] || 'Login failed. Please try again.', 'error');
+  }
+}
+
+// ── Logout ────────────────────────────────────────────────────
+async function doLogout() {
+  await auth.signOut();
+  resetForm();
+}
+
+// ── Password toggle ───────────────────────────────────────────
+function togglePw() {
+  const inp = document.getElementById('loginPassword');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  document.getElementById('pwToggle').textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+// ── Submit support request ────────────────────────────────────
+async function submitRequest() {
+  const orgName      = document.getElementById('orgName').value.trim();
+  const orgId        = document.getElementById('orgId').value.trim();
+  const orgAddress   = document.getElementById('orgAddress').value.trim();
+  const contactPhone = document.getElementById('contactPhone').value.trim();
+  const serviceType  = document.getElementById('serviceType').value;
+  const description  = document.getElementById('description').value.trim();
+
+  ['orgName','orgId','orgAddress','contactPhone','serviceType','description'].forEach(id => {
+    document.getElementById(id).classList.remove('error');
+  });
+
+  let valid = true;
+  if (!orgName)      { document.getElementById('orgName').classList.add('error');      valid=false; }
+  if (!orgId)        { document.getElementById('orgId').classList.add('error');        valid=false; }
+  if (!orgAddress)   { document.getElementById('orgAddress').classList.add('error');   valid=false; }
+  if (!contactPhone) { document.getElementById('contactPhone').classList.add('error'); valid=false; }
+  if (!serviceType)  { document.getElementById('serviceType').classList.add('error');  valid=false; }
+  if (!description)  { document.getElementById('description').classList.add('error');  valid=false; }
+  if (!valid) { showToast('Please fill in all required fields.','error'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  document.getElementById('submitText').textContent = 'Submitting…';
+  document.getElementById('spinner').style.display = 'block';
+
+  try {
+    const ticketNum = 'SUP-' + Date.now().toString().slice(-6);
+    const user = auth.currentUser;
+
+    await db.collection('supportRequests').add({
+      ticketId:    ticketNum,
+      orgName, orgId, orgAddress, contactPhone, serviceType, description,
+      status:      'Pending',
+      submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      submittedBy: user ? user.uid : 'anonymous',
+      submitterEmail: user ? user.email : '',
+      resolvedAt:  null,
+      adminNote:   ''
+    });
+
+    document.getElementById('ticketBadge').textContent = 'Ticket #' + ticketNum;
+    document.getElementById('formSection').style.display  = 'none';
+    document.getElementById('successSection').style.display = 'block';
+
+  } catch(err) {
+    console.error('Firestore error:', err.code, err.message);
+    const msg = err.code === 'permission-denied'
+      ? 'Permission denied — update your Firestore rules for supportRequests.'
+      : (err.message || 'Failed to submit. Please try again.');
+    showToast(msg, 'error');
+    btn.disabled = false;
+    document.getElementById('submitText').textContent = 'Submit Request';
+    document.getElementById('spinner').style.display = 'none';
+  }
+}
+
+// ── Reset form ────────────────────────────────────────────────
+function resetForm() {
+  ['orgName','orgId','orgAddress','contactPhone','serviceType','description'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; el.classList.remove('error'); }
+  });
+  const btn = document.getElementById('submitBtn');
+  if (btn) btn.disabled = false;
+  const st = document.getElementById('submitText');
+  if (st) st.textContent = 'Submit Request';
+  const sp = document.getElementById('spinner');
+  if (sp) sp.style.display = 'none';
+  const fs = document.getElementById('formSection');
+  if (fs) fs.style.display = 'block';
+  const ss = document.getElementById('successSection');
+  if (ss) ss.style.display = 'none';
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.className = 'toast' + (type==='error'?' error':'');
+  t.textContent = (type==='error'?'❌ ':'✅ ') + msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+</script>
+</body>
+</html>

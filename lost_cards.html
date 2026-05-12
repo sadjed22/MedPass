@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Re-request Lost Cards - MedPass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+let currentHospitalUid  = null;
+let currentHospitalName = null;
+
+document.documentElement.style.visibility = "hidden";
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.replace("login_page.html"); return; }
+  try {
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists) { await auth.signOut(); window.location.replace("login_page.html"); return; }
+    const profile = snap.data();
+    if (profile.role !== "Hospital" || profile.status === "inactive") {
+      await auth.signOut(); window.location.replace("login_page.html"); return;
+    }
+    currentHospitalUid  = user.uid;
+    currentHospitalName = profile.name || profile.hospitalName || "";
+    document.documentElement.style.visibility = "visible";
+  } catch(e) { window.location.replace("login_page.html"); }
+});
+async function logout() { await auth.signOut(); window.location.replace("login_page.html"); }
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E; --blue:#3B82F6; --purple:#8B5CF6;
+  --teal:#14B8A6; --red:#EF4444; --orange:#F97316;
+  --text:#1a1a2e; --muted:#6B7280; --border:#E5E7EB; --white:#FFFFFF;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);min-height:100vh;margin:0;padding:0;}
+
+/* NAVBAR */
+.navbar{background:#fff;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100;}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:20px;font-weight:700;}
+.nav-brand-icon{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;}
+.nav-brand-text{color:var(--green);letter-spacing:-0.5px;}
+.nav-brand-sub{font-size:11px;color:var(--muted);font-weight:400;display:block;}
+.nav-right{display:flex;align-items:center;gap:24px;}
+.nav-link{text-decoration:none;color:var(--text);font-weight:500;font-size:14px;transition:color .2s;}
+.nav-link:hover{color:var(--green);}
+.btn-logout{display:flex;align-items:center;gap:6px;padding:8px 16px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-logout:hover{background:#FEE2E2;}
+
+/* MAIN */
+.container{max-width:700px;margin:0 auto;padding:40px 20px;}
+.page-header{margin-bottom:40px;}
+.back-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-weight:500;font-size:14px;cursor:pointer;transition:all .2s;margin-bottom:20px;}
+.back-btn:hover{background:#f9fafb;border-color:var(--muted);}
+.page-title{display:inline-block;background:var(--orange);color:#fff;padding:12px 24px;border-radius:12px;font-size:20px;font-weight:700;letter-spacing:-0.5px;}
+
+/* FORM CARD */
+.form-card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:40px;}
+.form-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-0.3px;}
+.form-subtitle{font-size:14px;color:var(--muted);margin-bottom:32px;}
+
+/* INFO BOX */
+.info-box{background:rgba(249,115,22,.05);border-left:4px solid var(--orange);padding:16px;border-radius:8px;margin-bottom:24px;}
+.info-box-title{font-size:13px;font-weight:600;color:var(--orange);margin-bottom:4px;}
+.info-box-text{font-size:13px;color:var(--muted);line-height:1.5;}
+
+/* FORM GROUPS */
+.form-group{margin-bottom:24px;position:relative;}
+.form-group label{display:block;font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.form-group input,
+.form-group select,
+.form-group textarea{
+  width:100%;padding:12px 14px;border:1.5px solid var(--border);
+  border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;
+  background:#fafafa;transition:all .2s;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{outline:none;background:#fff;border-color:var(--blue);box-shadow:0 0 0 4px rgba(59,130,246,.08);}
+.form-group input.valid{border-color:var(--green);background:#F0FDF9;}
+.form-group input.invalid{border-color:var(--red);background:#FEF2F2;}
+.form-group textarea{resize:vertical;min-height:100px;}
+
+/* SEARCH DROPDOWN */
+.search-wrap{position:relative;}
+.search-spinner{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .6s linear infinite;display:none;
+}
+@keyframes spin{to{transform:translateY(-50%) rotate(360deg)}}
+.search-status{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  font-size:18px;display:none;
+}
+.dropdown{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:#fff;border:1.5px solid var(--border);border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;
+  max-height:220px;overflow-y:auto;display:none;
+}
+.dropdown.open{display:block;}
+.dropdown-item{
+  padding:12px 14px;cursor:pointer;
+  border-bottom:1px solid #F3F4F6;
+  transition:background .15s;
+  display:flex;flex-direction:column;gap:2px;
+}
+.dropdown-item:last-child{border-bottom:none;}
+.dropdown-item:hover{background:#F9FAFB;}
+.dropdown-item .d-name{font-size:14px;font-weight:600;color:var(--text);}
+.dropdown-item .d-meta{font-size:12px;color:var(--muted);}
+.dropdown-item .d-id{font-size:11px;color:var(--blue);font-family:monospace;}
+.dropdown-empty{padding:14px;text-align:center;color:var(--muted);font-size:13px;}
+
+/* PATIENT CARD PREVIEW */
+.patient-preview{
+  background:linear-gradient(135deg,#F0FDF9,#EFF6FF);
+  border:1.5px solid #A7F3D0;
+  border-radius:12px;padding:16px 18px;
+  margin-top:10px;display:none;
+  gap:12px;align-items:center;
+}
+.patient-preview.show{display:flex;}
+.preview-avatar{
+  width:44px;height:44px;border-radius:50%;
+  background:linear-gradient(135deg,var(--green),var(--teal));
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.preview-info{flex:1;}
+.preview-name{font-size:15px;font-weight:700;color:var(--text);}
+.preview-id{font-size:12px;color:var(--blue);font-family:monospace;margin-top:2px;}
+.preview-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.preview-check{font-size:20px;color:var(--green);}
+
+/* EXISTING REQUEST WARNING */
+.existing-warn{
+  background:#FFFBEB;border:1.5px solid #FCD34D;
+  border-radius:10px;padding:12px 16px;margin-top:10px;
+  font-size:13px;color:#92400E;display:none;align-items:center;gap:8px;
+}
+.existing-warn.show{display:flex;}
+
+/* SUBMIT BTN */
+.payment-btn{
+  background:var(--orange);color:#fff;border:none;
+  padding:14px 32px;border-radius:10px;font-size:15px;font-weight:600;
+  cursor:pointer;transition:all .3s;width:100%;
+  box-shadow:0 4px 15px rgba(249,115,22,.2);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.payment-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(249,115,22,.3);background:#EA580C;}
+.payment-btn:active{transform:translateY(0);}
+.payment-btn:disabled{background:#D1D5DB;box-shadow:none;cursor:not-allowed;transform:none;}
+
+/* LOADING SPINNER IN BTN */
+.btn-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:none;}
+
+/* SUCCESS STATE */
+.success-card{
+  background:linear-gradient(135deg,#F0FDF9,#EFF6FF);
+  border:1.5px solid #A7F3D0;border-radius:16px;
+  padding:40px 32px;text-align:center;display:none;
+}
+.success-card.show{display:block;}
+.success-icon{font-size:52px;margin-bottom:12px;}
+.success-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.success-sub{font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+.success-ref{
+  display:inline-block;background:#fff;border:1px solid var(--border);
+  border-radius:8px;padding:8px 16px;font-family:monospace;
+  font-size:13px;color:var(--blue);margin-bottom:20px;
+}
+.btn-back-dash{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--green);color:#fff;border:none;
+  padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;
+  cursor:pointer;transition:background .2s;text-decoration:none;
+}
+.btn-back-dash:hover{background:#24a67a;}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;background:#1a1a2e;color:#fff;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.2);z-index:999;display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1);min-width:260px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-left:4px solid var(--green);}
+.toast.error{border-left:4px solid var(--red);}
+
+@media(max-width:768px){.form-card{padding:24px;}.navbar{padding:16px 20px;}.container{padding:20px 16px;}}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="hospital_dashboard.html" class="nav-brand">
+    <div class="nav-brand-icon">🏥</div>
+    <div><div class="nav-brand-text">MedPass</div><span class="nav-brand-sub">Hospital Portal</span></div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">Home</a>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <a href="hospital_dashboard.html" class="back-btn">← Back</a>
+    <div class="page-title">🔄 Re-request Lost Cards</div>
+  </div>
+
+  <!-- FORM -->
+  <div class="form-card" id="formCard">
+    <h2 class="form-title">Request Replacement Card</h2>
+    <p class="form-subtitle">Request a replacement card for a lost, stolen or damaged patient card</p>
+
+    <div class="info-box">
+      <div class="info-box-title">💡 Note</div>
+      <div class="info-box-text">
+        A replacement card requires a fee of <strong>600 DA</strong> (payable with Gold Card or debit card).
+        The patient keeps their <strong>same QR code and Patient ID</strong> — only a new physical card is issued.
+        Delivery within 7–10 business days.
+      </div>
+    </div>
+
+    <!-- PATIENT SEARCH -->
+    <div class="form-group">
+      <label for="patientSearch">Patient ID or Full Name *</label>
+      <div class="search-wrap">
+        <input type="text" id="patientSearch" placeholder="Type to search patient…" autocomplete="off" oninput="onSearchInput()" onblur="onSearchBlur()" onfocus="onSearchFocus()"/>
+        <div class="search-spinner" id="searchSpinner"></div>
+        <div class="search-status" id="searchStatus"></div>
+        <div class="dropdown" id="dropdown"></div>
+      </div>
+      <!-- Selected patient preview -->
+      <div class="patient-preview" id="patientPreview">
+        <div class="preview-avatar" id="previewAvatar"></div>
+        <div class="preview-info">
+          <div class="preview-name" id="previewName"></div>
+          <div class="preview-id" id="previewId"></div>
+          <div class="preview-meta" id="previewMeta"></div>
+        </div>
+        <div class="preview-check">✓</div>
+      </div>
+      <!-- Existing pending request warning -->
+      <div class="existing-warn" id="existingWarn">
+        ⚠️ <span id="existingWarnText">This patient already has a pending replacement request.</span>
+      </div>
+    </div>
+
+    <div class="form-group" id="reasonGroup" style="display:none">
+      <label for="reason">Reason for Replacement *</label>
+      <select id="reason" required>
+        <option value="">Select reason</option>
+        <option value="Lost Card">Lost Card</option>
+        <option value="Damaged Card">Damaged Card</option>
+        <option value="Stolen Card">Stolen Card</option>
+        <option value="Not Received">Card Never Arrived</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="notesGroup" style="display:none">
+      <label for="notes">Additional Notes (Optional)</label>
+      <textarea id="notes" placeholder="Provide additional details about the replacement request"></textarea>
+    </div>
+
+    <button class="payment-btn" id="submitBtn" style="display:none" onclick="handleSubmit()">
+      <span id="btnIcon">💳</span>
+      <span id="btnText">Pay 600 DA &amp; Submit Request</span>
+      <div class="btn-spinner" id="btnSpinner"></div>
+    </button>
+  </div>
+
+  <!-- SUCCESS STATE -->
+  <div class="success-card" id="successCard">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Replacement Request Submitted!</div>
+    <div class="success-sub" id="successText"></div>
+    <div class="success-ref" id="successRef"></div>
+    <br/>
+    <a href="hospital_dashboard.html" class="btn-back-dash">← Back to Dashboard</a>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let selectedPatient = null; // full Firestore user doc
+let searchTimeout   = null;
+let dropdownOpen    = false;
+
+// ── SEARCH INPUT ──
+function onSearchInput() {
+  const q = document.getElementById('patientSearch').value.trim();
+  clearSelectedPatient();
+  clearTimeout(searchTimeout);
+  if (q.length < 2) { closeDropdown(); return; }
+  showSpinner(true);
+  searchTimeout = setTimeout(() => searchPatients(q), 350);
+}
+
+function onSearchBlur() {
+  // Delay so click on dropdown item registers first
+  setTimeout(() => closeDropdown(), 200);
+}
+
+function onSearchFocus() {
+  const q = document.getElementById('patientSearch').value.trim();
+  if (q.length >= 2 && !selectedPatient) searchPatients(q);
+}
+
+async function searchPatients(q) {
+  try {
+    const ql = q.toLowerCase();
+    // Single-field query only — no compound index needed.
+    // Fetch all patients by role and filter name/ID client-side.
+    const snap = await db.collection('users')
+      .where('role', '==', 'Patient')
+      .limit(300)
+      .get();
+
+    const results = [];
+    snap.docs.forEach(d => {
+      const data = d.data();
+      const st = data.status || '';
+      if (st !== 'active' && st !== 'approved') return;
+      const nm  = (data.name || data.fullName || '').toLowerCase();
+      const pid = (data.patientId || '').toLowerCase();
+      if (nm.includes(ql) || pid.includes(ql)) {
+        results.push({ id: d.id, ...data });
+      }
+    });
+
+    showSpinner(false);
+    renderDropdown(results.slice(0, 10));
+  } catch(err) {
+    showSpinner(false);
+    renderDropdown([], err.message);
+  }
+}
+
+function renderDropdown(results, errMsg) {
+  const dd = document.getElementById('dropdown');
+  if (errMsg) {
+    dd.innerHTML = `<div class="dropdown-empty">⚠️ ${errMsg}</div>`;
+  } else if (results.length === 0) {
+    dd.innerHTML = `<div class="dropdown-empty">No patients found. Check spelling or ID.</div>`;
+  } else {
+    dd.innerHTML = results.map(p => {
+      const name = p.name || p.fullName || '—';
+      const pid  = p.patientId || '—';
+      const dob  = p.dob || '';
+      const bt   = p.bloodType || '';
+      const meta = [dob, bt].filter(Boolean).join(' · ');
+      return `<div class="dropdown-item" onmousedown="selectPatient('${p.id}')">
+        <div class="d-name">${name}</div>
+        <div class="d-id">${pid}</div>
+        ${meta ? `<div class="d-meta">${meta}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+  dd.classList.add('open');
+  dropdownOpen = true;
+}
+
+function closeDropdown() {
+  document.getElementById('dropdown').classList.remove('open');
+  dropdownOpen = false;
+}
+
+async function selectPatient(uid) {
+  closeDropdown();
+  showSpinner(true);
+  try {
+    const snap = await db.collection('users').doc(uid).get();
+    if (!snap.exists) { showSpinner(false); return; }
+    selectedPatient = { id: snap.id, ...snap.data() };
+
+    const name = selectedPatient.name || selectedPatient.fullName || '—';
+    const pid  = selectedPatient.patientId || '—';
+    const dob  = selectedPatient.dob || '';
+    const bt   = selectedPatient.bloodType || '';
+    const meta = [dob && `DOB: ${dob}`, bt && `Blood: ${bt}`].filter(Boolean).join('  ·  ');
+
+    // Fill input
+    document.getElementById('patientSearch').value = `${name}  (${pid})`;
+    document.getElementById('patientSearch').classList.add('valid');
+
+    // Show preview
+    document.getElementById('previewAvatar').textContent = name.charAt(0).toUpperCase();
+    document.getElementById('previewName').textContent   = name;
+    document.getElementById('previewId').textContent     = pid;
+    document.getElementById('previewMeta').textContent   = meta;
+    document.getElementById('patientPreview').classList.add('show');
+
+    // Check for existing pending replacement
+    await checkExistingRequest(uid, pid, name);
+
+    // Show rest of form
+    document.getElementById('reasonGroup').style.display = 'block';
+    document.getElementById('notesGroup').style.display  = 'block';
+    document.getElementById('submitBtn').style.display   = 'flex';
+    showSpinner(false);
+  } catch(err) {
+    showSpinner(false);
+    showToast('Error loading patient: ' + err.message, 'error');
+  }
+}
+
+async function checkExistingRequest(uid, pid, name) {
+  try {
+    const snap = await db.collection('cardRequests')
+      .where('patientUid','==', uid)
+      .where('isReplacement','==', true)
+      .where('status','in',['pending','sent'])
+      .limit(1).get();
+    const warnEl = document.getElementById('existingWarn');
+    if (!snap.empty) {
+      const req = snap.docs[0].data();
+      document.getElementById('existingWarnText').textContent =
+        `${name} already has a pending replacement request (${req.cardReqId || snap.docs[0].id}) with status "${req.status}". Submitting another will create a duplicate.`;
+      warnEl.classList.add('show');
+    } else {
+      warnEl.classList.remove('show');
+    }
+  } catch(e) {}
+}
+
+function clearSelectedPatient() {
+  selectedPatient = null;
+  document.getElementById('patientSearch').classList.remove('valid','invalid');
+  document.getElementById('patientPreview').classList.remove('show');
+  document.getElementById('existingWarn').classList.remove('show');
+  document.getElementById('reasonGroup').style.display = 'none';
+  document.getElementById('notesGroup').style.display  = 'none';
+  document.getElementById('submitBtn').style.display   = 'none';
+}
+
+// ── SUBMIT ──
+async function handleSubmit() {
+  if (!selectedPatient) { showToast('Please select a patient first.','error'); return; }
+  const reason = document.getElementById('reason').value;
+  if (!reason) { showToast('Please select a reason.','error'); return; }
+
+  // Disable button, show spinner
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  document.getElementById('btnIcon').style.display    = 'none';
+  document.getElementById('btnText').textContent      = 'Processing…';
+  document.getElementById('btnSpinner').style.display = 'block';
+
+  try {
+    const name   = selectedPatient.name || selectedPatient.fullName || '—';
+    const pid    = selectedPatient.patientId || '—';
+    const notes  = document.getElementById('notes').value.trim();
+
+    // Generate replacement card request ID
+    const cardReqId = 'REPL-' + Date.now().toString(36).toUpperCase();
+    const estDelivery = new Date();
+    estDelivery.setDate(estDelivery.getDate() + 10);
+
+    // Write to cardRequests — preserving the SAME patientUid so QR/NFC data is unchanged
+    await db.collection('cardRequests').doc(cardReqId).set({
+      cardReqId,
+      patientUid:     selectedPatient.id,
+      patientId:      pid,
+      patientName:    name,
+      hospitalUid:    currentHospitalUid,
+      hospitalName:   currentHospitalName,
+      requestDate:    firebase.firestore.FieldValue.serverTimestamp(),
+      estDelivery:    estDelivery.toISOString().split('T')[0],
+      status:         'pending',
+      isReplacement:  true,          // flag so admin knows it's a lost/damaged card
+      replacementReason: reason,
+      notes:          notes || null,
+      feePaid:        600,
+      feeCurrency:    'DA',
+      createdAt:      firebase.firestore.FieldValue.serverTimestamp(),
+      // QR/NFC data is read from the patient's users doc directly — NOT copied here
+      // so the same QR code on the new physical card stays valid automatically
+    });
+
+    // Show success
+    document.getElementById('formCard').style.display = 'none';
+    const sc = document.getElementById('successCard');
+    document.getElementById('successText').innerHTML =
+      `A replacement card request has been submitted for <strong>${name}</strong>.<br>
+       Reason: <strong>${reason}</strong><br>
+       The patient keeps their same QR code &amp; Patient ID.<br>
+       Expected delivery: <strong>${estDelivery.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</strong><br>
+       Payment of <strong>600 DA</strong> processed.`;
+    document.getElementById('successRef').textContent = cardReqId;
+    sc.classList.add('show');
+  } catch(err) {
+    btn.disabled = false;
+    document.getElementById('btnIcon').style.display    = 'inline';
+    document.getElementById('btnText').textContent      = 'Pay 600 DA & Submit Request';
+    document.getElementById('btnSpinner').style.display = 'none';
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+// ── HELPERS ──
+function showSpinner(on) {
+  document.getElementById('searchSpinner').style.display = on ? 'block' : 'none';
+}
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type==='success'?'✅':'❌'}</span><span>${msg}</span>`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4500);
+}
+</script>
+</body>
+</html>

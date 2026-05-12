@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Blood Analysis Center - MedPass | Scan & Statistics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Firebase SDKs (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- jsQR for QR decoding -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --red: #EF4444;
+      --pink: #EC4899;
+      --blue: #3B82F6;
+      --text: #1a1a2e;
+      --muted: #6B7280;
+      --border: #E5E7EB;
+      --white: #FFFFFF;
+      --teal: #14B8A6;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      height: 100%;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #FFF0F0 0%, #FDF2F8 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ========= NAVBAR ========= */
+    .navbar {
+      background: #fff;
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .nav-brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--red), var(--pink));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .nav-brand-text {
+      color: var(--red);
+      letter-spacing: -0.5px;
+    }
+
+    .nav-brand-sub {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+      display: block;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 500;
+      font-size: 14px;
+      transition: color .2s;
+    }
+
+    .nav-link svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .nav-link:hover {
+      color: var(--red);
+    }
+
+    .btn-logout {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: #FEF2F2;
+      color: #DC2626;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .btn-logout:hover {
+      background: #FEE2E2;
+    }
+
+    /* ========= MAIN CONTAINER ========= */
+    .container {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 40px 20px;
+      flex-grow: 1;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 50px;
+      position: relative;
+    }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .2s;
+      position: absolute;
+      left: 20px;
+    }
+
+    .back-btn:hover {
+      background: #f9fafb;
+      border-color: var(--muted);
+    }
+
+    .dashboard-title {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--red), var(--pink));
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 40px;
+    }
+
+    /* ========= VIEW SYSTEM ========= */
+    .view {
+      display: none;
+    }
+    .view.active {
+      display: block;
+    }
+
+    /* ========= FEATURE GRID ========= */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .feature-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      border: 1px solid transparent;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+      border-color: var(--border);
+    }
+
+    .feature-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 60px;
+      height: 60px;
+      border-radius: 14px;
+      font-size: 28px;
+      margin-bottom: 20px;
+      transition: transform .3s;
+    }
+
+    .feature-card:hover .feature-icon {
+      transform: scale(1.1);
+    }
+
+    .feature-icon.blood {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--red);
+    }
+
+    .feature-icon.blue {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--blue);
+    }
+
+    .feature-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .feature-desc {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .action-buttons-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .btn-scan-nfc, .btn-scan-qr {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      border: none;
+      font-family: inherit;
+    }
+
+    .btn-scan-nfc {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .btn-scan-qr {
+      background: #6366F1;
+      color: #fff;
+    }
+
+    .btn-scan-nfc:hover, .btn-scan-qr:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
+
+    /* ========= STATS VIEW STYLES ========= */
+    .stat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      border-radius: 16px;
+      padding: 28px 24px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .stat-card.patients {
+      background: linear-gradient(135deg, #EF4444, #EC4899);
+    }
+
+    .stat-card.tests {
+      background: linear-gradient(135deg, #3B82F6, #06B6D4);
+    }
+
+    .stat-icon {
+      font-size: 36px;
+      opacity: 0.9;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0.85;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.1;
+    }
+
+    .section-header {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(236, 72, 153, 0.06));
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid var(--red);
+    }
+
+    .section-header h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .section-header p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .request-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      border: 1px solid rgba(229, 231, 235, 0.8);
+    }
+
+    .request-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .request-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .req-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .req-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .req-id {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .badge {
+      padding: 5px 14px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge.normal {
+      background: #F0FDF4;
+      color: #16A34A;
+      border: 1px solid #BBF7D0;
+    }
+
+    .badge.urgent {
+      background: #FEF2F2;
+      color: #DC2626;
+      border: 1px solid #FECACA;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .info-box {
+      background: #F9FAFB;
+      border-radius: 10px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+    }
+
+    .info-box-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .info-box-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .info-box-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .request-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .status-val.completed, .result-val.available {
+      font-size: 14px;
+      font-weight: 700;
+      color: #16A34A;
+    }
+
+    .status-val.pending, .result-val.pending {
+      font-size: 14px;
+      font-weight: 700;
+      color: #F59E0B;
+    }
+
+    .download-btn {
+      background: linear-gradient(135deg, #EF4444, #EC4899);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ========= MODAL SCANNER (Identical to Pharmacy) ========= */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #fff;
+      border-radius: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h3 {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      background: #F3F4F6;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    #ba-video {
+      width: 100%;
+      border-radius: 12px;
+      background: #000;
+      margin-bottom: 16px;
+    }
+
+    .scan-buttons-modal {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .btn-cam-modal, .btn-upload-modal {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+    }
+
+    .btn-cam-modal {
+      background: linear-gradient(135deg, var(--red), var(--pink));
+      color: #fff;
+    }
+
+    .btn-upload-modal {
+      background: #F3F4F6;
+      color: var(--text);
+    }
+
+    #ba-fileInput {
+      display: none;
+    }
+
+    .scan-result-modal {
+      margin-top: 16px;
+      padding: 12px;
+      background: #F0FDF4;
+      border-radius: 10px;
+      display: none;
+    }
+
+    .scan-result-modal.error {
+      background: #FEF2F2;
+      color: #DC2626;
+    }
+
+    .scan-result-modal.success {
+      background: #F0FDF4;
+      color: #065F46;
+    }
+
+    .loading-spin {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--red);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    footer {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 40px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .footer-text {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 16px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .footer-link {
+      color: rgba(255, 255, 255, 0.6);
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .footer-link:hover {
+      color: #fff;
+    }
+
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 16px 20px;
+      }
+      .container {
+        padding: 30px 16px;
+      }
+      .features-grid, .stat-row, .info-grid {
+        grid-template-columns: 1fr;
+      }
+      .back-btn {
+        left: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="blood_analysis_dashboard.html" class="nav-brand">
+    <div class="nav-brand-icon">🧪</div>
+    <div>
+      <div class="nav-brand-text">MedPass</div>
+      <span class="nav-brand-sub">Blood Analysis Portal</span>
+    </div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </a>
+    <button class="btn-logout" onclick="logout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </button>
+  </div>
+</nav>
+
+<div class="container">
+  <!-- HOME VIEW (Dashboard default - active) -->
+  <div class="view active" id="homeView">
+    <div class="page-header">
+      <div class="dashboard-title">🧪 Blood Analysis Center Dashboard</div>
+    </div>
+    <div class="features-grid">
+      <!-- Scan Patient Card - Enhanced with same scanning functionality as Pharmacy -->
+      <div class="feature-card" style="cursor:default;">
+        <div class="feature-icon blood">🩸</div>
+        <h3 class="feature-title">Scan Patient Card</h3>
+        <p class="feature-desc">Scan QR code or use NFC to retrieve patient information and test orders.</p>
+        <div class="action-buttons-row">
+          <button class="btn-scan-qr" onclick="openQRScanner()">🔍 Scan QR →</button>
+          <button class="btn-scan-nfc" onclick="alert('NFC scanning would open native hardware. For demo, please use QR scan.');">📱 Scan NFC →</button>
+        </div>
+      </div>
+      <!-- View Statistics -->
+      <div class="feature-card" onclick="showView('statsView')">
+        <div class="feature-icon blue">📊</div>
+        <h3 class="feature-title">View Statistics</h3>
+        <p class="feature-desc">View patient statistics and test results overview.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS VIEW (dynamic) -->
+  <div class="view" id="statsView">
+    <div class="page-header">
+      <button class="back-btn" onclick="showView('homeView')">← Back</button>
+      <div class="dashboard-title">📊 View Statistics</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card patients">
+        <div class="stat-icon">👤</div>
+        <div><div class="stat-label">Unique Patients</div><div class="stat-value" id="stat-patients">—</div></div>
+      </div>
+      <div class="stat-card tests">
+        <div class="stat-icon">🧪</div>
+        <div><div class="stat-label">Total Requests</div><div class="stat-value" id="stat-tests">—</div></div>
+      </div>
+    </div>
+    <div class="section-header">
+      <h2>Blood Test Requests</h2>
+      <p>View and process blood test requests from doctors</p>
+    </div>
+    <div id="requests-list">
+      <div style="text-align:center;padding:40px;color:var(--muted);"><span class="loading-spin"></span> Loading requests…</div>
+    </div>
+  </div>
+</div>
+
+<!-- QR SCANNER MODAL - 100% identical to pharmacy version -->
+<div class="modal-overlay" id="baQrModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>🔍 Scan QR Code</h3>
+      <button class="modal-close" onclick="closeQRScannerModal()">✕</button>
+    </div>
+    <video id="ba-video" autoplay playsinline></video>
+    <div class="scan-buttons-modal">
+      <button class="btn-cam-modal" onclick="startCameraScanner()">📷 Start Camera</button>
+      <button class="btn-upload-modal" onclick="document.getElementById('ba-fileInput').click()">📁 Upload QR Image</button>
+    </div>
+    <input type="file" id="ba-fileInput" accept="image/*" onchange="uploadQRImageForBlood(this)">
+    <div id="ba-scanResult" class="scan-result-modal"></div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <p class="footer-text">© 2026 MedPass. All rights reserved.</p>
+    <div class="footer-links">
+      <a href="#" class="footer-link">Privacy Policy</a>
+      <a href="#" class="footer-link">Terms of Service</a>
+      <a href="#" class="footer-link">Contact Us</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ----------------------------- FIREBASE AUTH (Role = Blood Analysis) ---------------------------
+  const firebaseConfig = {
+    apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+    authDomain: "med1-1931d.firebaseapp.com",
+    projectId: "med1-1931d",
+    storageBucket: "med1-1931d.firebasestorage.app",
+    messagingSenderId: "358197809853",
+    appId: "1:358197809853:web:9462e23af83a83b1deddd4",
+    measurementId: "G-X4DZWPY62Z"
+  };
+  const REQUIRED_ROLE = "Blood Analysis Center";
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  document.documentElement.style.visibility = "hidden";
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) { window.location.replace("login_page.html"); return; }
+    try {
+      const snap = await db.collection("users").doc(user.uid).get();
+      if (!snap.exists) { await auth.signOut(); window.location.replace("login_page.html"); return; }
+      const profile = snap.data();
+      if (profile.role !== REQUIRED_ROLE || profile.status === "inactive") {
+        await auth.signOut(); window.location.replace("login_page.html"); return;
+      }
+      window.currentUser = user;
+      window.currentProfile = profile;
+      document.querySelectorAll("[data-user]").forEach(el => {
+        const f = el.getAttribute("data-user");
+        if (profile[f] !== undefined) el.textContent = profile[f];
+      });
+      document.documentElement.style.visibility = "visible";
+      document.dispatchEvent(new CustomEvent("userReady", { detail: profile }));
+    } catch (e) {
+      window.location.replace("login_page.html");
+    }
+  });
+
+  async function logout() {
+    await auth.signOut();
+    window.location.replace("login_page.html");
+  }
+
+  // Simple view toggling - stats view is now properly hidden initially
+  function showView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(viewId).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (viewId === 'statsView') loadBloodTestStats();
+  }
+
+  // ── Dynamic stats loader ──────────────────────────────────────────────
+  async function loadBloodTestStats() {
+    const list = document.getElementById('requests-list');
+    if (!list) return;
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);"><span class="loading-spin"></span> Loading…</div>';
+    try {
+      const uid = window.currentUser?.uid;
+      if (!uid) return;
+      const snap = await db.collection('bloodTestRequests')
+        .where('targetId', '==', uid)
+        .get();
+
+      const requests = snap.docs.map(d => ({ docId: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.sentAt?.toMillis ? a.sentAt.toMillis() : 0;
+          const tb = b.sentAt?.toMillis ? b.sentAt.toMillis() : 0;
+          return tb - ta;
+        });
+
+      // Stats
+      const uniquePatients = new Set(requests.map(r => r.patientId)).size;
+      const statP = document.getElementById('stat-patients');
+      const statT = document.getElementById('stat-tests');
+      if (statP) statP.textContent = uniquePatients;
+      if (statT) statT.textContent = requests.length;
+
+      if (requests.length === 0) {
+        list.innerHTML = '<div style="text-align:center;padding:60px;background:#fff;border-radius:16px;color:var(--muted);"><div style="font-size:40px;margin-bottom:12px;">📭</div><div style="font-weight:600;">No blood test requests yet.</div></div>';
+        return;
+      }
+
+      list.innerHTML = requests.map((req, i) => {
+        const reqId = 'BT-' + String(i + 1).padStart(6, '0');
+        const date = req.sentAt?.toDate
+          ? req.sentAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          : '—';
+        const priority = req.priority || 'Routine';
+        const badgeClass = priority.toLowerCase() === 'stat' || priority.toLowerCase() === 'urgent' ? 'urgent' : 'normal';
+        const status = req.status || 'pending';
+        const statusClass = status === 'completed' ? 'completed' : 'pending';
+        return `
+        <div class="request-card">
+          <div class="request-top">
+            <div class="request-left">
+              <div class="req-icon">🧪</div>
+              <div>
+                <div class="req-name">${esc(req.testType || 'Blood Test')}</div>
+                <div class="req-id">Request ID: ${reqId}</div>
+              </div>
+            </div>
+            <span class="badge ${badgeClass}">${esc(priority)}</span>
+          </div>
+          <div class="info-grid">
+            <div class="info-box">
+              <div class="info-box-label">👤 Patient Information</div>
+              <div class="info-box-name">${esc(req.patientName || '—')}</div>
+              <div class="info-box-sub">ID: ${esc(req.patientDisplayId || req.patientId || '—')}</div>
+            </div>
+            <div class="info-box">
+              <div class="info-box-label">🩺 Requesting Doctor</div>
+              <div class="info-box-name">${esc(req.doctorName || '—')}</div>
+              <div class="info-box-sub">📅 ${date}</div>
+            </div>
+          </div>
+          ${req.clinicalNotes ? `<div class="info-box" style="margin-bottom:16px;background:#EFF6FF;border-color:#BFDBFE;"><div class="info-box-label" style="color:#3B82F6;">ℹ️ Clinical Notes</div><div class="info-box-name">${esc(req.clinicalNotes)}</div></div>` : ''}
+          <div class="request-footer">
+            <div class="status-item"><span class="item-label">Status</span><span class="status-val ${statusClass}">${status.charAt(0).toUpperCase()+status.slice(1)}</span></div>
+            <div class="result-item"><span class="item-label">Results</span><span class="result-val ${statusClass}">${status === 'completed' ? 'Available' : 'Pending'}</span></div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      list.innerHTML = `<div style="text-align:center;padding:40px;background:#fff;border-radius:16px;color:#DC2626;">⚠️ Error: ${e.message}</div>`;
+    }
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ----------------------------- QR SCANNER LOGIC (redirects to patient_info1.html) ---------------------------
+  let currentStreamBlood = null;
+  let scanningActive = false;
+
+  function openQRScanner() {
+    const modal = document.getElementById('baQrModal');
+    modal.classList.add('active');
+    const resultDiv = document.getElementById('ba-scanResult');
+    resultDiv.style.display = 'none';
+    resultDiv.classList.remove('error', 'success');
+    resultDiv.innerHTML = '';
+  }
+
+  function closeQRScannerModal() {
+    const modal = document.getElementById('baQrModal');
+    modal.classList.remove('active');
+    if (currentStreamBlood) {
+      currentStreamBlood.getTracks().forEach(track => track.stop());
+      currentStreamBlood = null;
+    }
+    scanningActive = false;
+    const video = document.getElementById('ba-video');
+    if (video.srcObject) video.srcObject = null;
+  }
+
+  async function startCameraScanner() {
+    const video = document.getElementById('ba-video');
+    const resultDiv = document.getElementById('ba-scanResult');
+    resultDiv.style.display = 'none';
+    if (currentStreamBlood) {
+      currentStreamBlood.getTracks().forEach(t => t.stop());
+      currentStreamBlood = null;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      currentStreamBlood = stream;
+      video.srcObject = stream;
+      scanningActive = true;
+      scanQRCodeFromVideo();
+    } catch (err) {
+      resultDiv.innerHTML = '❌ Cannot access camera. Please check permissions.';
+      resultDiv.style.display = 'block';
+      resultDiv.classList.add('error');
+    }
+  }
+
+  function scanQRCodeFromVideo() {
+    const video = document.getElementById('ba-video');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    function detectLoop() {
+      if (!scanningActive) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        if (typeof jsQR !== 'undefined') {
+          const code = jsQR(imageData.data, canvas.width, canvas.height);
+          if (code) {
+            scanningActive = false;
+            if (currentStreamBlood) currentStreamBlood.getTracks().forEach(t => t.stop());
+            processScannedQRData(code.data);
+            return;
+          }
+        }
+        setTimeout(detectLoop, 250);
+      } else {
+        setTimeout(detectLoop, 100);
+      }
+    }
+    detectLoop();
+  }
+
+  function uploadQRImageForBlood(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, img.width, img.height);
+        if (typeof jsQR !== 'undefined') {
+          const code = jsQR(imageData.data, img.width, img.height);
+          if (code) {
+            processScannedQRData(code.data);
+          } else {
+            const resultDiv = document.getElementById('ba-scanResult');
+            resultDiv.innerHTML = '❌ No QR code found in this image.';
+            resultDiv.style.display = 'block';
+            resultDiv.classList.add('error');
+          }
+        } else {
+          const resultDiv = document.getElementById('ba-scanResult');
+          resultDiv.innerHTML = '❌ QR scanner library not loaded.';
+          resultDiv.style.display = 'block';
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+  }
+
+  async function processScannedQRData(qrText) {
+    const resultDiv = document.getElementById('ba-scanResult');
+    resultDiv.innerHTML = '<span class="loading-spin"></span> Looking up patient...';
+    resultDiv.style.display = 'block';
+    resultDiv.classList.remove('error', 'success');
+    
+    let patientUid = null;
+    let patientId = null;
+    
+    // Extract UID from QR text (supports formats like ...?uid=xxx or plain MP-xxxx)
+    const uidMatch = qrText.match(/[?&]uid=([^&]+)/);
+    if (uidMatch) patientUid = uidMatch[1];
+    
+    // Extract patient ID (MP-xxxxx format)
+    const idMatch = qrText.match(/MP-[A-Z0-9]+/);
+    if (idMatch) patientId = idMatch[0];
+    if (!patientUid && !patientId && qrText.startsWith('MP-')) patientId = qrText;
+    
+    try {
+      let patientData = null;
+      if (patientUid) {
+        const doc = await db.collection('users').doc(patientUid).get();
+        if (doc.exists && doc.data().role === 'Patient') patientData = { id: doc.id, ...doc.data() };
+      }
+      if (!patientData && patientId) {
+        const snapshot = await db.collection('users')
+          .where('patientId', '==', patientId).where('role', '==', 'Patient').limit(1).get();
+        if (!snapshot.empty) patientData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+      }
+      
+      if (patientData) {
+        // Store patient data and redirect to patient_info1.html (exactly like pharmacy dashboard)
+        localStorage.setItem('scannedPatient', JSON.stringify(patientData));
+        closeQRScannerModal();
+        // Redirect to patient_info1.html with scan parameter
+        window.location.href = 'patient_info1.html?scan=true';
+      } else {
+        resultDiv.innerHTML = '❌ Patient not found. Please check the QR code.';
+        resultDiv.classList.add('error');
+      }
+    } catch (err) {
+      resultDiv.innerHTML = '❌ Error: ' + err.message;
+      resultDiv.classList.add('error');
+    }
+  }
+</script>
+</body>
+</html>

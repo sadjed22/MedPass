@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>MedPass | Patient Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --green: #2DC98E;
+      --teal: #14B8A6;
+      --blue: #3B82F6;
+      --purple: #8B5CF6;
+      --red: #EF4444;
+      --orange: #F97316;
+      --pink: #EC4899;
+      --text: #1a1a2e;
+      --muted: #6B7280;
+      --border: #E5E7EB;
+      --white: #FFFFFF;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #F0F7F4 0%, #F5F3FF 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .navbar {
+      background: #fff;
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .nav-brand-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--teal);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .nav-brand-text {
+      color: var(--teal);
+      letter-spacing: -0.5px;
+    }
+
+    .nav-brand-sub {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+      display: block;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 500;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--teal);
+    }
+
+    .btn-logout {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: #FEF2F2;
+      color: #DC2626;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-logout:hover {
+      background: #FEE2E2;
+    }
+
+    .container {
+      max-width: 1000px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 40px 20px;
+      flex-grow: 1;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .dashboard-title {
+      background: linear-gradient(135deg, #EC4899, #8B5CF6);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .share-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--teal), var(--green));
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(20, 184, 166, 0.25);
+    }
+
+    .share-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .welcome-card {
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.06), rgba(139, 92, 246, 0.06));
+      border: 1px solid rgba(139, 92, 246, 0.12);
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin-bottom: 36px;
+    }
+
+    .welcome-card h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .welcome-card .meta {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      margin-top: 8px;
+    }
+
+    .record-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(229, 231, 235, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      transition: all 0.2s;
+    }
+
+    .record-card:hover {
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .record-left {
+      flex: 1;
+    }
+
+    .record-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .record-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .record-meta {
+      display: flex;
+      gap: 32px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-top: 2px;
+    }
+
+    .meta-value.normal { color: #16A34A; }
+    .meta-value.elevated { color: #F59E0B; }
+    .meta-value.abnormal { color: var(--red); }
+    .meta-value.clear { color: #16A34A; }
+
+    .view-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .view-btn.blue { background: var(--blue); color: #fff; }
+    .view-btn.red { background: var(--red); color: #fff; }
+    .view-btn.purple { background: var(--purple); color: #fff; }
+    .view-btn.green { background: var(--green); color: #fff; }
+    .view-btn:hover { transform: translateY(-1px); filter: brightness(0.97); }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 20px;
+      padding: 36px 32px;
+      width: 90%;
+      max-width: 480px;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+    }
+    .doctor-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 24px 0;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .doctor-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: #F0FFFE;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .doctor-item.selected { background: #E0F7F5; border: 1px solid var(--teal); }
+    .doctor-item input { width: 18px; height: 18px; accent-color: var(--teal); cursor: pointer; }
+    .send-btn {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--teal), var(--green));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .success-msg { display: none; text-align: center; padding: 20px 0; }
+    .success-msg.show { display: block; }
+    footer {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 32px 20px;
+      text-align: center;
+      margin-top: 40px;
+    }
+    @media (max-width: 700px) {
+      .navbar { flex-direction: column; align-items: flex-start; }
+      .record-card { flex-direction: column; align-items: flex-start; }
+    }
+    .loader { text-align: center; padding: 40px; color: var(--teal); font-weight: 500; }
+    .empty-state { background: #fff; border-radius: 24px; padding: 32px; text-align: center; color: var(--muted); }
+    .error-message { background: #FEF2F2; border-left: 4px solid var(--red); padding: 16px; border-radius: 12px; margin: 20px 0; color: #DC2626; }
+    .info-message { background: #EFF6FF; border-left: 4px solid var(--blue); padding: 16px; border-radius: 12px; margin: 20px 0; color: var(--blue); }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="#" class="nav-brand">
+    <div class="nav-brand-icon">💚</div>
+    <div><div class="nav-brand-text">MedPass</div><span class="nav-brand-sub">Patient Portal</span></div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </a>
+    <button class="btn-logout" onclick="handleLogout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </button>
+</nav>
+
+<div class="container" id="dashboardContainer">
+  <div class="page-header">
+    <div class="dashboard-title">Patient Dashboard</div>
+    <button class="share-btn" onclick="openShareModal()">🔗 Share Medical File</button>
+  </div>
+
+  <div id="dynamicContent">
+    <div class="loader">Loading your medical records...</div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <p class="footer-text">© 2026 MedPass — Secure Health Data</p>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="shareModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeShareModal()">✕</button>
+    <div id="modalForm">
+      <h3 style="margin-bottom: 16px;">📤 Share with Doctor</h3>
+      <div id="doctorListContainer" class="doctor-list">
+        <div style="padding: 20px; text-align: center; color: var(--muted);">
+          Loading available doctors...
+        </div>
+      </div>
+      <button class="send-btn" id="sendShareBtn" onclick="submitShareRequest()" disabled>Send Medical Summary</button>
+      <p style="font-size: 12px; color: var(--muted); margin-top: 16px; text-align: center;">
+        ⚠️ Note: Sharing requires your healthcare provider to add you as an assigned patient first.
+      </p>
+    </div>
+    <div class="success-msg" id="shareSuccessMsg">
+      <div class="success-icon">✅</div>
+      <h4>Request Sent!</h4>
+      <p id="shareSuccessText"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+    authDomain: "med1-1931d.firebaseapp.com",
+    projectId: "med1-1931d",
+    storageBucket: "med1-1931d.firebasestorage.app",
+    messagingSenderId: "358197809853",
+    appId: "1:358197809853:web:9462e23af83a83b1deddd4",
+    measurementId: "G-X4DZWPY62Z"
+  };
+  
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const REQUIRED_ROLE = "Patient";
+  let currentUserObj = null;
+  let currentProfile = null;
+
+  document.documentElement.style.visibility = "hidden";
+
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      window.location.replace("login_page.html");
+      return;
+    }
+
+    try {
+      const snap = await db.collection("users").doc(user.uid).get();
+      if (!snap.exists) {
+        await auth.signOut();
+        window.location.replace("login_page.html");
+        return;
+      }
+
+      const profile = snap.data();
+      if (profile.role !== REQUIRED_ROLE || profile.status === "inactive") {
+        await auth.signOut();
+        window.location.replace("login_page.html");
+        return;
+      }
+
+      currentUserObj = user;
+      currentProfile = profile;
+      document.documentElement.style.visibility = "visible";
+
+      document.querySelectorAll("[data-user]").forEach(el => {
+        const field = el.getAttribute("data-user");
+        if (profile[field] !== undefined) el.textContent = profile[field];
+      });
+
+      await renderDashboard(profile, user.uid);
+
+    } catch (error) {
+      console.error("Auth error:", error);
+      await auth.signOut();
+      window.location.replace("login_page.html");
+    }
+  });
+
+  async function renderDashboard(profile, uid) {
+    const container = document.getElementById("dynamicContent");
+    container.innerHTML = `<div class="loader">Loading your medical records...</div>`;
+
+    try {
+      let medicalRecords = [];
+      let assignments = [];
+      
+      // Try to read from assignments to show which doctors have access
+      try {
+        const assignSnap = await db.collection("assignments")
+          .where("patientId", "==", uid)
+          .get();
+        assignments = assignSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (err) {
+        console.log("assignments collection not accessible:", err.message);
+      }
+
+      // Try to read from medicalRecords
+      try {
+        const medicalSnap = await db.collection("medicalRecords").where("patientId", "==", uid).get();
+        medicalSnap.forEach(doc => {
+          const data = doc.data();
+          data.id = doc.id;
+          data.type = data.type || "consultation";
+          medicalRecords.push(data);
+        });
+      } catch (err) {
+        console.log("medicalRecords collection not accessible:", err.message);
+      }
+
+      // Build welcome card
+      let html = `
+        <div class="welcome-card">
+          <h2>Welcome, ${escapeHtml(profile.name || "Patient")}</h2>
+          <div class="meta">
+            Patient ID: ${escapeHtml(profile.patientId || uid.substring(0, 8))} | 
+            Email: ${escapeHtml(profile.email || currentUserObj?.email || "—")}
+          </div>
+          <div class="note"><span>🔐 Secure access:</span> Your medical records are protected.</div>
+        </div>
+      `;
+
+      // If user has assignments, show them
+      if (assignments.length > 0) {
+        html += `
+          <div class="info-message">
+            <strong>👨‍⚕️ Your Healthcare Team</strong><br>
+            You have ${assignments.length} healthcare provider(s) with access to your records.
+          </div>
+        `;
+      }
+
+      // Display Medical Records
+      html += `<div class="section-block"><div class="section-label"><span>📋</span> Medical Records</div>`;
+      if (medicalRecords.length === 0) {
+        html += `<div class="empty-state">
+          📭 No medical records found.<br><br>
+          <small>Medical records will appear here once healthcare providers add them to the system.</small>
+        </div>`;
+      } else {
+        medicalRecords.forEach(rec => {
+          html += `
+            <div class="record-card">
+              <div class="record-left">
+                <div class="record-name">${escapeHtml(rec.doctorName || rec.providerName || "Healthcare Provider")}</div>
+                <div class="record-sub">${escapeHtml(rec.specialty || rec.type || "Medical Record")}</div>
+                <div class="record-meta">
+                  <div><div class="meta-label">Date</div><div class="meta-value">${rec.date || rec.createdAt?.toDate?.().toLocaleDateString() || "N/A"}</div></div>
+                  <div><div class="meta-label">Diagnosis</div><div class="meta-value">${escapeHtml(rec.diagnosis || rec.condition || "—")}</div></div>
+                </div>
+              </div>
+              <button class="view-btn blue" onclick="viewRecord('${rec.id}')">👁 View</button>
+            </div>
+          `;
+        });
+      }
+      html += `</div>`;
+
+      container.innerHTML = html;
+      
+      // Load doctors from assignments (doctors this patient is already assigned to)
+      await loadDoctorsFromAssignments(uid);
+
+    } catch (error) {
+      console.error("Render error:", error);
+      container.innerHTML = `
+        <div class="error-message">
+          <strong>⚠️ Unable to load medical records</strong><br>
+          ${error.message}<br><br>
+          <small>Please ensure you are properly authenticated.</small>
+        </div>
+        <div class="empty-state">
+          📌 Your account is active. Medical records will appear here once added by healthcare providers.
+        </div>
+      `;
+      // Still try to load doctors from assignments
+      await loadDoctorsFromAssignments(uid);
+    }
+  }
+
+  async function loadDoctorsFromAssignments(patientUid) {
+    const doctorContainer = document.getElementById("doctorListContainer");
+    if (!doctorContainer) return;
+
+    try {
+      // First, get all assignments for this patient
+      const assignmentsSnap = await db.collection("assignments")
+        .where("patientId", "==", patientUid)
+        .get();
+
+      if (assignmentsSnap.empty) {
+        doctorContainer.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: var(--muted);">
+            ⚕️ <strong>No doctors assigned yet</strong><br><br>
+            Your healthcare provider needs to assign you to a doctor before you can share files.<br>
+            Please contact your clinic to set up your care team.
+          </div>
+        `;
+        document.getElementById("sendShareBtn").disabled = true;
+        return;
+      }
+
+      // Get doctor IDs from assignments
+      const doctorIds = [];
+      assignmentsSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.doctorId) {
+          doctorIds.push(data.doctorId);
+        }
+      });
+
+      if (doctorIds.length === 0) {
+        doctorContainer.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: var(--muted);">
+            ⚕️ No doctor information found in your assignments.
+          </div>
+        `;
+        document.getElementById("sendShareBtn").disabled = true;
+        return;
+      }
+
+      // Try to fetch doctor details from users collection
+      // Note: This may fail based on your security rules
+      let doctorsList = [];
+      
+      for (const doctorId of doctorIds) {
+        try {
+          const doctorDoc = await db.collection("users").doc(doctorId).get();
+          if (doctorDoc.exists) {
+            const doctorData = doctorDoc.data();
+            doctorsList.push({
+              id: doctorId,
+              name: doctorData.name || doctorData.fullName || "Doctor",
+              email: doctorData.email || ""
+            });
+          }
+        } catch (err) {
+          console.log(`Cannot fetch doctor ${doctorId}:`, err.message);
+          // Add a placeholder if we can't fetch the details
+          doctorsList.push({
+            id: doctorId,
+            name: `Doctor (ID: ${doctorId.substring(0, 8)})`,
+            email: ""
+          });
+        }
+      }
+
+      if (doctorsList.length === 0) {
+        doctorContainer.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: var(--muted);">
+            ⚕️ Unable to load doctor details. Please contact support.
+          </div>
+        `;
+        document.getElementById("sendShareBtn").disabled = true;
+        return;
+      }
+
+      doctorContainer.innerHTML = doctorsList.map(doc => `
+        <div class="doctor-item" onclick="toggleDoctorSelect(this)">
+          <input type="checkbox" value="${escapeHtml(doc.name)}${doc.email ? ` (${escapeHtml(doc.email)})` : ''}" id="doc_${doc.id}"/>
+          <label for="doc_${doc.id}">
+            <strong>${escapeHtml(doc.name)}</strong>
+            ${doc.email ? `<br><small style="color:var(--muted)">${escapeHtml(doc.email)}</small>` : ''}
+          </label>
+        </div>
+      `).join('');
+      
+      document.getElementById("sendShareBtn").disabled = false;
+      updateShareButtonState();
+
+    } catch (error) {
+      console.warn("Error loading doctors from assignments:", error);
+      doctorContainer.innerHTML = `
+        <div style="padding: 20px; text-align: center; color: var(--muted);">
+          ⚠️ Unable to load doctor list.<br><br>
+          <small>Please ensure your healthcare provider has assigned you to a doctor.</small>
+        </div>
+      `;
+      document.getElementById("sendShareBtn").disabled = true;
+    }
+  }
+
+  window.viewRecord = (id) => {
+    alert(`📄 Medical record details (ID: ${id}). Full clinical notes would be displayed here.`);
+  };
+
+  let currentShareSelections = new Set();
+
+  window.toggleDoctorSelect = (el) => {
+    const cb = el.querySelector('input[type="checkbox"]');
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    if (cb.checked) {
+      currentShareSelections.add(cb.value);
+      el.classList.add('selected');
+    } else {
+      currentShareSelections.delete(cb.value);
+      el.classList.remove('selected');
+    }
+    updateShareButtonState();
+  };
+
+  function updateShareButtonState() {
+    const btn = document.getElementById("sendShareBtn");
+    if (btn) btn.disabled = currentShareSelections.size === 0;
+  }
+
+  window.submitShareRequest = async () => {
+    if (currentShareSelections.size === 0) return;
+
+    const selectedNames = Array.from(currentShareSelections);
+    
+    // Store share request in Firestore if possible
+    if (currentUserObj) {
+      try {
+        await db.collection("share_requests").add({
+          patientId: currentUserObj.uid,
+          patientName: currentProfile?.name || "Patient",
+          sharedWithDoctors: selectedNames,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          scope: "Medical summary request",
+          status: "pending"
+        });
+      } catch (err) {
+        console.log("Share request logged locally only:", err.message);
+      }
+    }
+    
+    document.getElementById("modalForm").style.display = "none";
+    const successDiv = document.getElementById("shareSuccessMsg");
+    const successText = document.getElementById("shareSuccessText");
+    successText.innerText = `✓ Request sent to: ${selectedNames.join(', ')}. Your healthcare provider will be notified.`;
+    successDiv.classList.add("show");
+
+    setTimeout(() => {
+      closeShareModal();
+    }, 2500);
+  };
+
+  window.openShareModal = () => {
+    document.getElementById('shareModal').classList.add('open');
+    resetModalUI();
+    if (currentUserObj) {
+      loadDoctorsFromAssignments(currentUserObj.uid);
+    }
+  };
+
+  window.closeShareModal = () => {
+    document.getElementById('shareModal').classList.remove('open');
+    resetModalUI();
+  };
+
+  function resetModalUI() {
+    document.getElementById('modalForm').style.display = 'block';
+    document.getElementById('shareSuccessMsg').classList.remove('show');
+    currentShareSelections.clear();
+    updateShareButtonState();
+  }
+
+  window.handleLogout = async () => {
+    await auth.signOut();
+    window.location.replace("login_page.html");
+  };
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  }
+</script>
+</body>
+</html>

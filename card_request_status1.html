@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Card Request Status - MedPass Hospital</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+let currentHospitalUid = null;
+let currentHospitalName = null;
+
+document.documentElement.style.visibility = "hidden";
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.replace("login_page.html"); return; }
+  try {
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists) { await auth.signOut(); window.location.replace("login_page.html"); return; }
+    const profile = snap.data();
+    if (profile.role !== "Hospital" || profile.status === "inactive") {
+      await auth.signOut(); window.location.replace("login_page.html"); return;
+    }
+    currentHospitalUid  = user.uid;
+    currentHospitalName = profile.name || profile.hospitalName || '';
+    document.documentElement.style.visibility = "visible";
+    loadCardRequests();
+  } catch(e) { window.location.replace("login_page.html"); }
+});
+async function logout() { await auth.signOut(); window.location.replace("login_page.html"); }
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E; --blue:#3B82F6; --purple:#8B5CF6;
+  --teal:#14B8A6; --red:#EF4444; --orange:#F97316;
+  --text:#1a1a2e; --muted:#6B7280; --border:#E5E7EB; --white:#FFFFFF;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);min-height:100vh;margin:0;padding:0;}
+
+/* NAVBAR */
+.navbar{background:#fff;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100;}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:20px;font-weight:700;}
+.nav-brand-icon{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;}
+.nav-brand-text{color:var(--green);letter-spacing:-0.5px;}
+.nav-brand-sub{font-size:11px;color:var(--muted);font-weight:400;display:block;}
+.nav-right{display:flex;align-items:center;gap:24px;}
+.nav-link{text-decoration:none;color:var(--text);font-weight:500;font-size:14px;transition:color .2s;}
+.nav-link:hover{color:var(--green);}
+.btn-logout{display:flex;align-items:center;gap:6px;padding:8px 16px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-logout:hover{background:#FEE2E2;}
+
+/* MAIN */
+.container{max-width:1200px;margin:0 auto;padding:40px 20px;}
+.page-header{margin-bottom:32px;}
+.back-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#fff;border:1px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-weight:500;font-size:14px;cursor:pointer;transition:all .2s;margin-bottom:20px;}
+.back-btn:hover{background:#f9fafb;border-color:var(--muted);}
+.page-title{display:inline-block;background:var(--green);color:#fff;padding:12px 24px;border-radius:12px;font-size:20px;font-weight:700;letter-spacing:-0.5px;}
+
+/* STATS */
+.stats-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+.stat-pill{display:flex;align-items:center;gap:8px;padding:8px 16px;background:#fff;border-radius:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);font-size:13px;font-weight:600;color:var(--text);}
+.stat-dot{width:8px;height:8px;border-radius:50%;}
+.stat-dot.pending{background:#F59E0B;}
+.stat-dot.sent{background:var(--blue);}
+.stat-dot.received{background:var(--green);}
+
+/* FILTER TABS */
+.filter-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.filter-tab{padding:8px 16px;border:1.5px solid var(--border);border-radius:20px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;color:var(--muted);}
+.filter-tab.active{background:var(--green);border-color:var(--green);color:#fff;}
+.filter-tab:hover:not(.active){border-color:#9CA3AF;color:var(--text);}
+
+/* NOTE */
+.note-box{background:rgba(45,201,142,.06);border-left:4px solid var(--green);padding:14px;border-radius:8px;margin-bottom:24px;font-size:13px;color:var(--text);}
+
+/* TABLE */
+.table-card{background:#fff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden;margin-bottom:40px;}
+.table-header{background:linear-gradient(90deg,var(--green) 0%,var(--teal) 100%);padding:16px 24px;display:grid;grid-template-columns:.8fr 1.4fr 1fr 1fr 1fr 1fr;gap:12px;color:#fff;font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;}
+.table-row{padding:16px 24px;display:grid;grid-template-columns:.8fr 1.4fr 1fr 1fr 1fr 1fr;gap:12px;border-bottom:1px solid var(--border);align-items:center;transition:background .2s;}
+.table-row:hover{background:#fafafa;}
+.table-row:last-child{border-bottom:none;}
+.table-cell{font-size:13px;color:var(--text);}
+.card-id{color:var(--green);font-weight:700;font-size:12px;font-family:'Courier New',monospace;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;}
+.badge-pending{background:#FEF3C7;color:#92400E;}
+.badge-sent{background:#DBEAFE;color:#1D4ED8;}
+.badge-received{background:#D1FAE5;color:#065F46;}
+
+/* VIEW CARD BUTTON */
+.btn-view-card{background:linear-gradient(135deg,var(--green),var(--teal));color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+.btn-view-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(45,201,142,.3);}
+.btn-disabled{background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;}
+.btn-disabled:hover{transform:none;box-shadow:none;}
+
+/* SKELETON */
+.skeleton-row{padding:16px 24px;display:grid;grid-template-columns:.8fr 1.4fr 1fr 1fr 1fr 1fr;gap:12px;border-bottom:1px solid var(--border);}
+.skel{height:14px;background:#E5E7EB;border-radius:6px;animation:pulse 1.3s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-icon{font-size:52px;margin-bottom:12px;}
+.empty-text{font-size:16px;font-weight:600;margin-bottom:6px;color:var(--text);}
+
+/* ── CARD PREVIEW MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.active{display:flex;}
+.modal{background:#fff;border-radius:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.3);}
+.modal-head{padding:24px 28px 0;display:flex;align-items:center;justify-content:space-between;}
+.modal-head h2{font-size:18px;font-weight:700;color:var(--text);}
+.modal-close{width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s;}
+.modal-close:hover{background:#E5E7EB;color:var(--text);}
+.modal-body{padding:20px 28px 28px;}
+
+/* THE CARD */
+.medpass-card{
+  background:#fff;border-radius:20px;overflow:hidden;
+  box-shadow:0 24px 70px rgba(0,0,0,.22),0 8px 24px rgba(0,0,0,.10);
+  position:relative;width:100%;aspect-ratio:340/200;margin-bottom:20px;
+}
+.card-inner-layout{
+  padding:18px 20px 72px 20px;
+  height:100%;display:flex;flex-direction:column;
+  align-items:flex-start;position:relative;z-index:1;
+}
+.card-brand{
+  font-size:26px;font-weight:800;color:#1a1a2e;
+  width:100%;text-align:center;
+  margin-bottom:12px;letter-spacing:-0.8px;
+}
+.card-fields-list{display:flex;flex-direction:column;gap:9px;width:calc(100% - 116px);}
+.card-field-row{display:flex;align-items:center;gap:9px;font-size:13.5px;color:#444;line-height:1.2;}
+.card-field-row svg{width:15px;height:15px;flex-shrink:0;color:#2DC98E;}
+.card-field-row span{color:#555;}
+.card-field-row b{color:#1a1a2e;font-weight:700;}
+.card-wave-bottom{
+  position:absolute;bottom:0;left:0;right:0;height:62px;
+  background:linear-gradient(90deg,#2DC98E 0%,#3B82F6 50%,#8B5CF6 100%);
+  clip-path:ellipse(55% 100% at 50% 100%);z-index:0;
+}
+.card-qr-box{
+  position:absolute;right:16px;top:50%;transform:translateY(-44%);
+  width:106px;height:106px;background:#fff;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;padding:5px;
+  box-shadow:0 8px 24px rgba(0,0,0,.20),0 2px 8px rgba(45,201,142,.18);z-index:2;
+}
+
+/* STATUS STRIP */
+.card-status-strip{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#F9FAFB;border:1px solid var(--border);
+  border-radius:12px;padding:12px 16px;margin-bottom:16px;
+}
+.card-status-strip .label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+.card-status-strip .value{font-size:14px;font-weight:700;}
+
+/* META GRID */
+.card-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.card-meta-item{background:#F9FAFB;border-radius:10px;padding:10px 12px;}
+.card-meta-label{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
+.card-meta-value{font-size:13px;font-weight:600;color:var(--text);}
+
+/* READ-ONLY INFO BOX */
+.readonly-info{
+  background:rgba(45,201,142,.06);border:1px solid rgba(45,201,142,.2);
+  border-radius:10px;padding:12px 14px;
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;color:var(--text);
+}
+.readonly-info svg{width:16px;height:16px;color:var(--green);flex-shrink:0;}
+
+/* TIMELINE */
+.timeline{margin-top:16px;border-top:1px solid var(--border);padding-top:16px;}
+.timeline-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;}
+.timeline-steps{display:flex;align-items:center;gap:0;position:relative;}
+.timeline-step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;}
+.timeline-step:not(:last-child)::after{content:'';position:absolute;top:14px;left:50%;width:100%;height:2px;background:var(--border);z-index:0;}
+.timeline-step.done:not(:last-child)::after{background:var(--green);}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--border);background:#fff;position:relative;z-index:1;}
+.step-dot.done{background:var(--green);border-color:var(--green);color:#fff;}
+.step-dot.current{background:var(--blue);border-color:var(--blue);color:#fff;}
+.step-label{font-size:10px;font-weight:600;color:var(--muted);margin-top:6px;text-align:center;}
+.step-label.done{color:var(--green);}
+.step-label.current{color:var(--blue);}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;background:#1a1a2e;color:#fff;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.2);z-index:999;display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1);min-width:260px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-left:4px solid var(--green);}
+.toast.error{border-left:4px solid var(--red);}
+
+@media(max-width:1024px){.table-header,.table-row{grid-template-columns:.8fr 1.4fr 1fr 1fr 1fr;}.table-header>*:last-child{display:none;}.table-row>*:last-child{display:none;}}
+@media(max-width:768px){
+  .navbar{padding:16px 20px;}.container{padding:20px 16px;}
+  .table-header{display:none;}
+  .table-row{grid-template-columns:1fr;padding:16px;gap:8px;}
+  .table-cell::before{content:attr(data-label);display:block;font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:2px;}
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="hospital_dashboard.html" class="nav-brand">
+    <div class="nav-brand-icon">🏥</div>
+    <div><div class="nav-brand-text">MedPass</div><span class="nav-brand-sub">Hospital Portal</span></div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">Home</a>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <a href="hospital_dashboard.html" class="back-btn">← Back</a>
+    <div class="page-title">📋 Card Request Status</div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-pill"><div class="stat-dot pending"></div><span id="countPending">0 pending</span></div>
+    <div class="stat-pill"><div class="stat-dot sent"></div><span id="countSent">0 sent</span></div>
+    <div class="stat-pill"><div class="stat-dot received"></div><span id="countReceived">0 received</span></div>
+  </div>
+
+  <div class="filter-tabs">
+    <button class="filter-tab active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-tab" onclick="setFilter('pending',this)">⏳ Pending</button>
+    <button class="filter-tab" onclick="setFilter('sent',this)">📬 Sent</button>
+    <button class="filter-tab" onclick="setFilter('received',this)">✅ Received</button>
+  </div>
+
+  <div class="note-box">
+    <strong>Read-only view:</strong> Card requests are generated automatically when you approve a patient. Only Admins can update delivery status. Click <strong>💳 View Card</strong> to preview the patient's MedPass card once it's received.
+  </div>
+
+  <div class="table-card">
+    <div class="table-header">
+      <div>Card ID</div>
+      <div>Patient Name</div>
+      <div>Request Date</div>
+      <div>Est. Delivery</div>
+      <div>Status</div>
+      <div>Actions</div>
+    </div>
+    <div id="tableBody">
+      <div class="skeleton-row"><div class="skel" style="width:70%"></div><div class="skel" style="width:65%"></div><div class="skel" style="width:55%"></div><div class="skel" style="width:50%"></div><div class="skel" style="width:60%"></div><div class="skel" style="width:80%"></div></div>
+      <div class="skeleton-row"><div class="skel" style="width:60%"></div><div class="skel" style="width:75%"></div><div class="skel" style="width:65%"></div><div class="skel" style="width:45%"></div><div class="skel" style="width:55%"></div><div class="skel" style="width:70%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CARD PREVIEW MODAL -->
+<div class="modal-overlay" id="cardModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>💳 MedPass Card</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let allRequests = [];
+let currentFilter = 'all';
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+async function loadCardRequests() {
+  try {
+    // Hospital sees only their own patients' card requests
+    const snap = await db.collection('cardRequests')
+      .where('hospitalUid', '==', currentHospitalUid)
+      .orderBy('createdAt','desc')
+      .get();
+
+    // Fallback: if hospitalUid field not stored, filter by hospitalName
+    let docs = snap.docs;
+    if (docs.length === 0 && currentHospitalName) {
+      const snap2 = await db.collection('cardRequests')
+        .where('hospitalName', '==', currentHospitalName)
+        .orderBy('createdAt','desc')
+        .get();
+      docs = snap2.docs;
+    }
+
+    allRequests = docs.map(d => ({ id: d.id, ...d.data() }));
+    updateStats(); renderTable();
+  } catch(err) {
+    // Fallback: load all and filter client-side (uses read permission)
+    try {
+      const snap = await db.collection('cardRequests').orderBy('createdAt','desc').limit(300).get();
+      allRequests = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(r => r.hospitalUid === currentHospitalUid || r.hospitalName === currentHospitalName);
+      updateStats(); renderTable();
+    } catch(err2) {
+      document.getElementById('tableBody').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Failed to load</div><p style="font-size:13px;">${err2.message}</p></div>`;
+    }
+  }
+}
+
+function updateStats() {
+  document.getElementById('countPending').textContent  = `${allRequests.filter(r=>r.status==='pending').length} pending`;
+  document.getElementById('countSent').textContent     = `${allRequests.filter(r=>r.status==='sent').length} sent`;
+  document.getElementById('countReceived').textContent = `${allRequests.filter(r=>r.status==='received').length} received`;
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); renderTable();
+}
+
+function renderTable() {
+  const filtered = currentFilter==='all' ? allRequests : allRequests.filter(r=>r.status===currentFilter);
+  const tbody = document.getElementById('tableBody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">${currentFilter==='pending'?'🎉':'📭'}</div>
+      <div class="empty-text">${currentFilter==='pending'?'No pending card requests!':'No card requests found'}</div>
+      <p style="font-size:13px;color:var(--muted)">Card requests are created automatically when you approve a patient account.</p>
+    </div>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(req => {
+    const badge = req.status==='pending'
+      ? `<span class="badge badge-pending">⏳ Pending</span>`
+      : req.status==='sent'
+        ? `<span class="badge badge-sent">📬 Sent</span>`
+        : `<span class="badge badge-received">✅ Received</span>`;
+
+    // Card is viewable only when received
+    const canView = req.status === 'received';
+    const viewBtn = canView
+      ? `<button class="btn-view-card" onclick="openCardModal('${req.id}')">💳 View Card</button>`
+      : `<button class="btn-view-card btn-disabled" title="Available once card is received" disabled>🔒 Pending Delivery</button>`;
+
+    return `<div class="table-row">
+      <div class="table-cell card-id" data-label="Card ID">${req.cardReqId||req.id}</div>
+      <div class="table-cell" data-label="Patient">${req.patientName||'—'}</div>
+      <div class="table-cell" data-label="Request Date">${fmtDate(req.requestDate)}</div>
+      <div class="table-cell" data-label="Est. Delivery">${req.estDelivery||'—'}</div>
+      <div class="table-cell" data-label="Status">${badge}</div>
+      <div class="table-cell">${viewBtn}</div>
+    </div>`;
+  }).join('');
+}
+
+async function openCardModal(docId) {
+  const req = allRequests.find(r=>r.id===docId);
+  if (!req) return;
+
+  // Fetch patient profile
+  let patientProfile = null;
+  if (req.patientUid) {
+    try {
+      const snap = await db.collection('users').doc(req.patientUid).get();
+      if (snap.exists) patientProfile = snap.data();
+    } catch(e) {}
+  }
+
+  const qrData      = patientProfile?.qrData || patientProfile?.nfcUrl || '';
+  const patientId   = patientProfile?.patientId || req.patientId || '—';
+  const bloodType   = patientProfile?.bloodType || '—';
+  const dob         = patientProfile?.dob || '—';
+
+  const statusColor = req.status==='received' ? 'var(--green)' : req.status==='sent' ? 'var(--blue)' : '#D97706';
+  const statusLabel = req.status==='received' ? '✅ Received' : req.status==='sent' ? '📬 Sent' : '⏳ Pending';
+
+  // Timeline: step index 0=pending, 1=sent, 2=received
+  const stepIdx = req.status==='received' ? 2 : req.status==='sent' ? 1 : 0;
+  const steps = [
+    { label:'Request Created', icon:'📋' },
+    { label:'Card Sent',       icon:'📬' },
+    { label:'Delivered',       icon:'✅' },
+  ];
+  const timelineHTML = steps.map((s,i) => {
+    const cls = i < stepIdx ? 'done' : i === stepIdx ? 'current' : '';
+    return `<div class="timeline-step ${cls}">
+      <div class="step-dot ${cls}">${cls==='done'?'✓':s.icon}</div>
+      <div class="step-label ${cls}">${s.label}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('modalBody').innerHTML = `
+    <!-- THE CARD -->
+    <div class="medpass-card">
+      <div class="card-inner-layout">
+        <div class="card-brand">medcard</div>
+        <div class="card-fields-list">
+          <div class="card-field-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Full name: &nbsp;<b>${req.patientName||'—'}</b></span>
+          </div>
+          <div class="card-field-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Date of birth: &nbsp;<b>${dob}</b></span>
+          </div>
+          <div class="card-field-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
+            <span>ID: &nbsp;<b style="font-family:monospace;">${patientId}</b></span>
+          </div>
+          <div class="card-field-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span>Blood type: &nbsp;<b style="color:#DC2626;">${bloodType}</b></span>
+          </div>
+        </div>
+      </div>
+      <div class="card-qr-box" id="cardQrBox"></div>
+      <div class="card-wave-bottom"></div>
+    </div>
+
+    <!-- STATUS STRIP -->
+    <div class="card-status-strip">
+      <div><div class="label">Delivery Status</div><div class="value" style="color:${statusColor}">${statusLabel}</div></div>
+      <div><div class="label">Request Date</div><div class="value">${fmtDate(req.requestDate)}</div></div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline">
+      <div class="timeline-title">📦 Delivery Progress</div>
+      <div class="timeline-steps">${timelineHTML}</div>
+    </div>
+
+    <!-- META GRID -->
+    <div class="card-meta-grid" style="margin-top:16px;">
+      <div class="card-meta-item"><div class="card-meta-label">Card Req ID</div><div class="card-meta-value" style="font-size:11px;font-family:monospace;">${req.cardReqId||req.id}</div></div>
+      <div class="card-meta-item"><div class="card-meta-label">Est. Delivery</div><div class="card-meta-value">${req.estDelivery||'—'}</div></div>
+      <div class="card-meta-item"><div class="card-meta-label">Patient ID</div><div class="card-meta-value" style="font-family:monospace;color:var(--green);">${patientId}</div></div>
+      <div class="card-meta-item"><div class="card-meta-label">Blood Type</div><div class="card-meta-value" style="color:#DC2626;">${bloodType}</div></div>
+    </div>
+
+    <!-- READ-ONLY INFO -->
+    <div class="readonly-info">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      Status updates are managed by MedPass Admin. Contact admin if there's a delivery issue.
+    </div>
+  `;
+
+  document.getElementById('cardModal').classList.add('active');
+
+  // Render QR code
+  if (qrData) {
+    setTimeout(() => {
+      const box = document.getElementById('cardQrBox');
+      if (box && typeof QRCode !== 'undefined') {
+        new QRCode(box, { text: qrData, width: 96, height: 96, colorDark: '#1a1a2e', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+      }
+    }, 80);
+  }
+}
+
+function closeModal() {
+  document.getElementById('cardModal').classList.remove('active');
+}
+document.getElementById('cardModal').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${type==='success'?'✅':'❌'}</span><span>${msg}</span>`;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),4000);
+}
+</script>
+</body>
+</html>

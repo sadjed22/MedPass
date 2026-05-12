@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+ 
+<!-- ② Auth Guard -->
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4",
+  measurementId: "G-X4DZWPY62Z"
+};
+ 
+// 🎯 RÔLE DE CE DASHBOARD
+const REQUIRED_ROLE = "Pharmacy";
+ 
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+ 
+// Cache la page pendant la vérification
+document.documentElement.style.visibility = "hidden";
+ 
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.replace("login_page.html"); return; }
+  try {
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists) { await auth.signOut(); window.location.replace("login_page.html"); return; }
+    const profile = snap.data();
+    if (profile.role !== REQUIRED_ROLE || profile.status === "inactive") {
+      await auth.signOut(); window.location.replace("login_page.html"); return;
+    }
+    // ✅ Accès autorisé
+    document.documentElement.style.visibility = "visible";
+    window.currentUser    = user;
+    window.currentProfile = profile;
+    // Remplir les éléments data-user="name" / "email" / "role"
+    document.querySelectorAll("[data-user]").forEach(el => {
+      const f = el.getAttribute("data-user");
+      if (profile[f] !== undefined) el.textContent = profile[f];
+    });
+    document.dispatchEvent(new CustomEvent("userReady", { detail: profile }));
+  } catch(e) {
+    window.location.replace("login_page.html");
+  }
+});
+ 
+async function logout() {
+  await auth.signOut();
+  window.location.replace("login_page.html");
+}
+</script>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pharmacy Dashboard - MedPass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;
+  --blue:#3B82F6;
+  --purple:#8B5CF6;
+  --teal:#14B8A6;
+  --red:#EF4444;
+  --text:#1a1a2e;
+  --muted:#6B7280;
+  --border:#E5E7EB;
+  --white:#FFFFFF;
+  --light-bg:#F0F7F4;
+}
+html{
+  scroll-behavior:smooth;
+  height:100%;
+}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);
+  min-height:100vh;
+  margin:0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ── NAVBAR ── */
+.navbar{
+  background:#fff;
+  padding:16px 40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+
+.nav-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-decoration:none;
+  font-size:20px;
+  font-weight:700;
+}
+
+.nav-brand-icon{
+  width:32px;
+  height:32px;
+  background:var(--teal);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:18px;
+}
+
+.nav-brand-text{
+  color:var(--teal);
+  letter-spacing:-0.5px;
+}
+
+.nav-brand-sub{
+  font-size:11px;
+  color:var(--muted);
+  font-weight:400;
+  display:block;
+}
+
+.nav-right{
+  display:flex;
+  align-items:center;
+  gap:24px;
+}
+
+.nav-link{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  text-decoration:none;
+  color:var(--text);
+  font-weight:500;
+  font-size:14px;
+  transition:color .2s;
+}
+
+.nav-link:hover{
+  color:var(--teal);
+}
+.btn-logout{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 16px;
+  background:#FEF2F2;
+  color:#DC2626;
+  border:none;
+  border-radius:8px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .2s;
+}
+.btn-logout:hover{background:#FEE2E2;}
+/* ── MAIN CONTENT ── */
+.container{
+  max-width:1200px;
+  width:100%;
+  margin:0 auto;
+  padding:40px 20px;
+  flex-grow:1;
+}
+
+.page-header{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  margin-bottom:50px;
+  position:relative;
+}
+
+.back-btn{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 12px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text);
+  text-decoration:none;
+  font-weight:500;
+  font-size:12px;
+  cursor:pointer;
+  transition:all .2s;
+  position:absolute;
+  left:20px;
+}
+
+.back-btn:hover{
+  background:#f9fafb;
+  border-color:var(--muted);
+}
+
+.dashboard-title{
+  display:inline-block;
+  background:var(--teal);
+  color:#fff;
+  padding:12px 24px;
+  border-radius:12px;
+  font-size:24px;
+  font-weight:700;
+  letter-spacing:-0.5px;
+  margin-bottom:40px;
+}
+
+/* ── FEATURE GRID ── */
+.features-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:24px;
+  margin-bottom:40px;
+}
+
+.feature-card{
+  background:#fff;
+  border-radius:16px;
+  padding:32px 24px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  cursor:pointer;
+  transition:all .3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration:none;
+  color:inherit;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  border:1px solid transparent;
+}
+
+.feature-card:hover{
+  transform:translateY(-8px);
+  box-shadow:0 12px 32px rgba(0,0,0,.12);
+  border-color:var(--border);
+}
+
+.feature-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:60px;
+  height:60px;
+  border-radius:14px;
+  font-size:28px;
+  margin-bottom:20px;
+  transition:transform .3s;
+}
+
+.feature-card:hover .feature-icon{
+  transform:scale(1.1);
+}
+
+.feature-icon.teal{
+  background:rgba(20,184,166,.1);
+  color:var(--teal);
+}
+
+.feature-icon.blue{
+  background:rgba(59,130,246,.1);
+  color:var(--blue);
+}
+.nav-link svg {
+  width: 18px;
+  height: 18px;
+}
+.nav-link {
+  color: var(--text); /* or any visible color */
+}
+
+.feature-title{
+  font-size:18px;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:8px;
+  letter-spacing:-0.3px;
+}
+
+.feature-desc{
+  font-size:14px;
+  color:var(--muted);
+  line-height:1.5;
+}
+
+/* ── FOOTER ── */
+footer{
+  background:#1a1a2e;
+  color:#fff;
+  padding:40px 20px;
+  border-top:1px solid rgba(255,255,255,.1);
+  flex-shrink:0;
+}
+
+.footer-inner{
+  max-width:1200px;
+  margin:0 auto;
+  text-align:center;
+}
+
+.footer-text{
+  font-size:14px;
+  color:rgba(255,255,255,.6);
+  margin-bottom:16px;
+}
+
+.footer-links{
+  display:flex;
+  justify-content:center;
+  gap:24px;
+  flex-wrap:wrap;
+}
+
+.footer-link{
+  color:rgba(255,255,255,.6);
+  text-decoration:none;
+  font-size:13px;
+  transition:color .2s;
+}
+
+.footer-link:hover{
+  color:#fff;
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .navbar{
+    padding:16px 20px;
+  }
+  
+  .container{
+    padding:30px 16px;
+  }
+  
+  .features-grid{
+    grid-template-columns:1fr;
+  }
+  
+  .page-header{
+    flex-direction:row;
+    align-items:center;
+    justify-content:center;
+  }
+  
+  .back-btn{
+    position:absolute;
+    left:16px;
+  }
+  
+  .nav-right{
+    gap:16px;
+  }
+}
+
+@media(max-width:600px){
+  .navbar{
+    flex-direction:column;
+    gap:16px;
+    align-items:flex-start;
+  }
+  
+  .nav-right{
+    width:100%;
+    justify-content:flex-end;
+  }
+  
+  .dashboard-title{
+    font-size:20px;
+    padding:10px 16px;
+  }
+  
+  .feature-card{
+    padding:24px 16px;
+  }
+  
+  .page-header{
+    justify-content:center;
+  }
+  
+  .back-btn{
+    position:absolute;
+    left:16px;
+    font-size:11px;
+    padding:5px 10px;
+  }
+}
+/* ── QR SCANNER MODAL ── */
+.modal-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);
+  z-index:1000;display:none;align-items:center;justify-content:center;
+}
+.modal-overlay.active{display:flex;}
+.modal-content{
+  background:#fff;border-radius:24px;max-width:500px;width:90%;
+  max-height:85vh;overflow-y:auto;padding:24px;
+}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.modal-header h3{font-size:18px;font-weight:700;}
+.modal-close{background:#F3F4F6;border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;}
+#ph-video{width:100%;border-radius:12px;background:#000;margin-bottom:16px;}
+.scan-buttons-modal{display:flex;gap:12px;margin-bottom:16px;}
+.btn-cam-modal,.btn-upload-modal{
+  flex:1;padding:12px;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;
+}
+.btn-cam-modal{background:var(--teal);color:#fff;}
+.btn-upload-modal{background:#F3F4F6;color:var(--text);}
+#ph-fileInput{display:none;}
+.scan-result-modal{margin-top:16px;padding:12px;background:#F0FDF4;border-radius:10px;display:none;}
+.scan-result-modal.error{background:#FEF2F2;color:#DC2626;}
+.scan-result-modal.success{background:#F0FDF4;color:#065F46;}
+.loading-spin{display:inline-block;width:16px;height:16px;border:2px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:spin 0.6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="#" class="nav-brand" onclick="goHome(event)">
+    <div class="nav-brand-icon">💊</div>
+    <div>
+      <div class="nav-brand-text">MedPass</div>
+      <span class="nav-brand-sub">Pharmacy Portal</span>
+    </div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </a>
+    <button class="btn-logout" onclick="logout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </button>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="container">
+  
+  
+  <div class="dashboard-title">💊 Pharmacy Dashboard</div>
+
+  <div class="features-grid">
+    <!-- Scan Patient Card -->
+    <div class="feature-card" onclick="openQRScanner()" style="cursor:pointer;">
+      <div class="feature-icon teal">📱</div>
+      <h3 class="feature-title">Scan Patient Card</h3>
+      <p class="feature-desc">Scan patient QR code or use NFC to view patient information</p>
+      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
+        <a href="pharmacy_scan_card.html" onclick="event.stopPropagation();"
+          style="display:inline-flex;align-items:center;gap:6px;background:var(--teal);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;transition:opacity .2s;"
+          onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          Scan NFC &#8594;
+        </a>
+        <button onclick="event.stopPropagation();openQRScanner();"
+          style="display:inline-flex;align-items:center;gap:6px;background:#6366F1;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:opacity .2s;"
+          onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          Scan QR &#8594;
+        </button>
+      </div>
+    </div>
+
+  <!-- QR SCANNER MODAL -->
+  <div class="modal-overlay" id="qrModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🔍 Scan QR Code</h3>
+        <button class="modal-close" onclick="closeQRModal()">✕</button>
+      </div>
+      <video id="ph-video" autoplay playsinline></video>
+      <div class="scan-buttons-modal">
+        <button class="btn-cam-modal" onclick="startCamera()">📷 Start Camera</button>
+        <button class="btn-upload-modal" onclick="document.getElementById('ph-fileInput').click()">📁 Upload QR Image</button>
+      </div>
+      <input type="file" id="ph-fileInput" accept="image/*" onchange="uploadQRImage(this)">
+      <div id="ph-scanResult" class="scan-result-modal"></div>
+    </div>
+  </div>
+
+    <!-- View Statistics -->
+    <a href="pharmacy_view_statistics.html" class="feature-card">
+      <div class="feature-icon blue">📊</div>
+      <h3 class="feature-title">View Statistics</h3>
+      <p class="feature-desc">View patient statistics and prescriptions</p>
+    </a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <p class="footer-text">© 2026 MedPass. All rights reserved.</p>
+    <div class="footer-links">
+      <a href="#" class="footer-link">Privacy Policy</a>
+      <a href="#" class="footer-link">Terms of Service</a>
+      <a href="#" class="footer-link">Contact Us</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+function goBack(event) {
+  if (event) event.preventDefault();
+  window.history.back();
+}
+
+function goHome(event) {
+  if (event) event.preventDefault();
+  window.location.href = 'home_page.html';
+}
+</script>
+
+
+<script>
+// QR SCANNER
+let currentStream = null;
+let scanning = false;
+
+function openQRScanner() {
+  document.getElementById('qrModal').classList.add('active');
+  document.getElementById('ph-scanResult').style.display = 'none';
+}
+
+function closeQRModal() {
+  document.getElementById('qrModal').classList.remove('active');
+  if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
+  scanning = false;
+}
+
+async function startCamera() {
+  const video = document.getElementById('ph-video');
+  const resultDiv = document.getElementById('ph-scanResult');
+  resultDiv.style.display = 'none';
+  if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    currentStream = stream;
+    video.srcObject = stream;
+    scanning = true;
+    scanQRCode();
+  } catch (err) {
+    resultDiv.innerHTML = '❌ Cannot access camera. Please check permissions.';
+    resultDiv.style.display = 'block';
+    resultDiv.classList.add('error');
+  }
+}
+
+function scanQRCode() {
+  const video = document.getElementById('ph-video');
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  function detect() {
+    if (!scanning) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL('image/png');
+      if (typeof jsQR !== 'undefined') {
+        const img = new Image();
+        img.onload = () => {
+          const c2 = document.createElement('canvas');
+          c2.width = img.width; c2.height = img.height;
+          const ctx2 = c2.getContext('2d');
+          ctx2.drawImage(img, 0, 0);
+          const id2 = ctx2.getImageData(0, 0, img.width, img.height);
+          const code = jsQR(id2.data, img.width, img.height);
+          if (code) { scanning = false; currentStream.getTracks().forEach(t => t.stop()); processQRData(code.data); return; }
+          setTimeout(detect, 500);
+        };
+        img.src = imageData;
+      } else { setTimeout(detect, 500); }
+    } else { setTimeout(detect, 100); }
+  }
+  detect();
+}
+
+function uploadQRImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      if (typeof jsQR !== 'undefined') {
+        const code = jsQR(imageData.data, img.width, img.height);
+        if (code) { processQRData(code.data); }
+        else {
+          const r = document.getElementById('ph-scanResult');
+          r.innerHTML = '❌ No QR code found in this image.';
+          r.style.display = 'block'; r.classList.add('error');
+        }
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+async function processQRData(qrText) {
+  const resultDiv = document.getElementById('ph-scanResult');
+  resultDiv.innerHTML = '<span class="loading-spin"></span> Looking up patient...';
+  resultDiv.style.display = 'block';
+  resultDiv.classList.remove('error', 'success');
+  let patientUid = null, patientId = null;
+  const uidMatch = qrText.match(/[?&]uid=([^&]+)/);
+  if (uidMatch) patientUid = uidMatch[1];
+  const idMatch = qrText.match(/MP-[A-Z0-9]+/);
+  if (idMatch) patientId = idMatch[0];
+  if (!patientUid && !patientId && qrText.startsWith('MP-')) patientId = qrText;
+  try {
+    let patientData = null;
+    if (patientUid) {
+      const doc = await firebase.firestore().collection('users').doc(patientUid).get();
+      if (doc.exists && doc.data().role === 'Patient') patientData = { id: doc.id, ...doc.data() };
+    }
+    if (!patientData && patientId) {
+      const snapshot = await firebase.firestore().collection('users')
+        .where('patientId', '==', patientId).where('role', '==', 'Patient').limit(1).get();
+      if (!snapshot.empty) patientData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+    }
+    if (patientData) {
+      localStorage.setItem('scannedPatient', JSON.stringify(patientData));
+      closeQRModal();
+      window.location.href = 'patient_info1.html?scan=true';
+    } else {
+      resultDiv.innerHTML = '❌ Patient not found. Please check the QR code.';
+      resultDiv.classList.add('error');
+    }
+  } catch (err) {
+    resultDiv.innerHTML = '❌ Error: ' + err.message;
+    resultDiv.classList.add('error');
+  }
+}
+
+const jsqrScript = document.createElement('script');
+jsqrScript.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+document.head.appendChild(jsqrScript);
+</script>
+
+</body>
+</html>

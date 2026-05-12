@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin Dashboard - MedPass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
+  authDomain: "med1-1931d.firebaseapp.com",
+  projectId: "med1-1931d",
+  storageBucket: "med1-1931d.firebasestorage.app",
+  messagingSenderId: "358197809853",
+  appId: "1:358197809853:web:9462e23af83a83b1deddd4"
+};
+const REQUIRED_ROLE = "Admin";
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// Secondary app — prevents losing admin session when creating new users
+let secondApp;
+try { secondApp = firebase.app("secondary"); }
+catch(e) { secondApp = firebase.initializeApp(firebaseConfig, "secondary"); }
+const secondAuth = secondApp.auth();
+
+document.documentElement.style.visibility = "hidden";
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.replace("login_page.html"); return; }
+  try {
+    const snap = await db.collection("users").doc(user.uid).get();
+    if (!snap.exists) { await auth.signOut(); window.location.replace("login_page.html"); return; }
+    const profile = snap.data();
+    if (profile.role !== REQUIRED_ROLE || profile.status === "inactive") {
+      await auth.signOut(); window.location.replace("login_page.html"); return;
+    }
+    document.documentElement.style.visibility = "visible";
+    window.currentUser = user; window.currentProfile = profile;
+    document.querySelectorAll("[data-user]").forEach(el => {
+      const f = el.getAttribute("data-user");
+      if (profile[f] !== undefined) el.textContent = profile[f];
+    });
+  } catch(e) { window.location.replace("login_page.html"); }
+});
+async function logout() { await auth.signOut(); window.location.replace("login_page.html"); }
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;--blue:#3B82F6;--purple:#8B5CF6;
+  --teal:#14B8A6;--red:#EF4444;--text:#1a1a2e;
+  --muted:#6B7280;--border:#E5E7EB;--white:#FFFFFF;--dark:#2B3E50;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);min-height:100vh;margin:0;padding:0;}
+
+/* NAVBAR */
+.navbar{background:#fff;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100;}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:20px;font-weight:700;}
+.nav-brand-icon{width:32px;height:32px;background:var(--dark);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;}
+.nav-brand-text{color:var(--dark);letter-spacing:-0.5px;}
+.nav-brand-sub{font-size:11px;color:var(--muted);font-weight:400;display:block;}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.nav-user{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--text);}
+.nav-user-avatar{width:30px;height:30px;background:var(--dark);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.nav-link{display:flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);font-weight:500;font-size:14px;transition:color .2s;}
+.nav-link svg{width:18px;height:18px;}
+.nav-link:hover{color:var(--dark);}
+.btn-logout{display:flex;align-items:center;gap:6px;padding:8px 16px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;}
+.btn-logout:hover{background:#FEE2E2;}
+
+/* LAYOUT */
+.container{max-width:1200px;width:100%;margin:0 auto;padding:40px 20px;}
+.dashboard-title{display:inline-block;background:var(--dark);color:#fff;padding:12px 24px;border-radius:12px;font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:24px;}
+.top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:16px;}
+.admin-intro{background:var(--dark);color:#fff;padding:20px 28px;border-radius:14px;flex:1;min-width:260px;}
+.admin-intro h2{font-size:18px;font-weight:700;margin-bottom:4px;}
+.admin-intro p{font-size:13px;color:rgba(255,255,255,.7);}
+.btn-add-user{display:flex;align-items:center;gap:10px;padding:14px 26px;background:linear-gradient(90deg,#2DC98E,#14B8A6);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:all .3s;box-shadow:0 4px 15px rgba(45,201,142,.25);white-space:nowrap;}
+.btn-add-user:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(45,201,142,.35);}
+.btn-add-user .plus{font-size:22px;line-height:1;}
+
+/* FEATURE GRID */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-bottom:40px;}
+.feature-card{background:#fff;border-radius:16px;padding:32px 24px;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;transition:all .3s cubic-bezier(0.4,0,0.2,1);text-decoration:none;color:inherit;display:flex;flex-direction:column;align-items:flex-start;border:1px solid transparent;}
+.feature-card:hover{transform:translateY(-8px);box-shadow:0 12px 32px rgba(0,0,0,.12);border-color:var(--border);}
+.feature-icon{display:flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:14px;font-size:28px;margin-bottom:20px;transition:transform .3s;}
+.feature-card:hover .feature-icon{transform:scale(1.1);}
+.feature-icon.blue{background:rgba(59,130,246,.1);color:var(--blue);}
+.feature-icon.purple{background:rgba(139,92,246,.1);color:var(--purple);}
+.feature-icon.green{background:rgba(45,201,142,.1);color:var(--green);}
+.feature-icon.red{background:rgba(239,68,68,.1);color:var(--red);}
+.feature-icon.orange{background:rgba(249,115,22,.1);color:#F97316;}
+.feature-icon.teal{background:rgba(20,184,166,.1);color:var(--teal);}
+.feature-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-0.3px;}
+.feature-desc{font-size:14px;color:var(--muted);line-height:1.5;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.active{display:flex;}
+.modal{background:#fff;border-radius:24px;width:100%;max-width:540px;max-height:94vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.2);}
+.modal-header{padding:28px 32px 0;display:flex;align-items:center;justify-content:space-between;}
+.modal-header-left{display:flex;align-items:center;gap:14px;}
+.modal-header-icon{width:48px;height:48px;background:linear-gradient(135deg,#2DC98E,#14B8A6);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;}
+.modal-header h2{font-size:20px;font-weight:700;color:var(--text);}
+.modal-header p{font-size:13px;color:var(--muted);margin-top:2px;}
+.modal-close{width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s;flex-shrink:0;}
+.modal-close:hover{background:#E5E7EB;color:var(--text);}
+.modal-body{padding:24px 32px 32px;}
+
+/* ROLE PILLS */
+.role-label{font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;display:block;text-transform:uppercase;letter-spacing:.4px;}
+.role-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:24px;}
+.role-pill{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border:1.5px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;background:#fff;font-size:11px;font-weight:600;color:var(--muted);text-align:center;line-height:1.2;}
+.role-pill .rpi{font-size:20px;}
+.role-pill:hover{border-color:#9CA3AF;color:var(--text);}
+.role-pill.selected{border-color:var(--green);background:#F0FDF9;color:#065F46;}
+.role-pill.patient-selected{border-color:#8B5CF6;background:#F5F3FF;color:#5B21B6;}
+
+/* Patient card hint */
+.patient-hint{display:none;background:linear-gradient(135deg,#F5F3FF,#EDE9FE);border:1px solid #C4B5FD;border-radius:12px;padding:14px 16px;margin-bottom:20px;gap:12px;align-items:flex-start;}
+.patient-hint.visible{display:flex;}
+.patient-hint-icon{font-size:22px;flex-shrink:0;margin-top:2px;}
+.patient-hint-text{font-size:13px;color:#5B21B6;line-height:1.5;}
+.patient-hint-text strong{display:block;font-weight:700;margin-bottom:2px;}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.form-row.full{grid-template-columns:1fr;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group label{font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.4px;}
+.input-wrap{position:relative;display:flex;align-items:center;}
+.input-icon{position:absolute;left:12px;font-size:15px;color:#9CA3AF;pointer-events:none;}
+.form-group input{width:100%;padding:11px 12px 11px 36px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;background:#FAFAFA;transition:all .2s;color:var(--text);}
+.form-group input:focus{outline:none;border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(45,201,142,.1);}
+.form-group input.error{border-color:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.08);}
+.form-hint{font-size:11px;color:var(--muted);}
+
+/* STATUS TOGGLE */
+.status-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#F8FAFC;border-radius:10px;margin-top:6px;}
+.status-row span{font-size:14px;font-weight:500;color:var(--text);}
+.toggle{position:relative;width:44px;height:24px;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:#D1D5DB;border-radius:12px;cursor:pointer;transition:.3s;}
+.toggle-slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
+.toggle input:checked + .toggle-slider{background:var(--green);}
+.toggle input:checked + .toggle-slider:before{transform:translateX(20px);}
+
+/* MODAL FOOTER */
+.modal-footer{display:flex;gap:12px;padding-top:20px;border-top:1px solid var(--border);margin-top:20px;}
+.btn-cancel{flex:1;padding:13px;background:#F3F4F6;color:var(--text);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;}
+.btn-cancel:hover{background:#E5E7EB;}
+.btn-create{flex:2;padding:13px;background:linear-gradient(90deg,#2DC98E,#14B8A6);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-create:hover{opacity:.92;}
+.btn-create:disabled{opacity:.6;cursor:not-allowed;}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* SUCCESS SCREEN */
+.success-state{text-align:center;padding:8px 0;}
+.success-icon{font-size:52px;margin-bottom:12px;}
+.success-state h3{font-size:20px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.success-state .sub{font-size:14px;color:var(--muted);margin-bottom:20px;}
+
+/* USER SUMMARY */
+.user-summary{background:#F0FDF9;border:1px solid #A7F3D0;border-radius:12px;padding:14px 16px;text-align:left;margin-bottom:16px;}
+.user-summary div{font-size:13px;color:var(--text);padding:5px 0;display:flex;gap:8px;border-bottom:1px solid #D1FAE5;}
+.user-summary div:last-child{border-bottom:none;}
+.user-summary .lbl{color:var(--muted);min-width:65px;font-weight:500;flex-shrink:0;}
+
+/* CARD SECTION — QR + NFC */
+.card-section{background:linear-gradient(135deg,#1a1a2e 0%,#2B3E50 100%);border-radius:16px;padding:24px;margin-bottom:16px;color:#fff;}
+.card-section-title{font-size:13px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.card-section-title::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.1);}
+
+.card-data-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+
+/* QR Code box */
+.qr-box{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.qr-wrapper{background:#fff;border-radius:12px;padding:12px;display:inline-flex;}
+.qr-wrapper canvas,.qr-wrapper img{display:block;}
+.qr-label{font-size:11px;color:rgba(255,255,255,.5);font-weight:500;}
+
+/* NFC box */
+.nfc-box{display:flex;flex-direction:column;gap:12px;}
+.nfc-field{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;}
+.nfc-field-label{font-size:10px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.nfc-field-value{font-size:12px;color:#fff;font-family:'Courier New',monospace;word-break:break-all;line-height:1.5;}
+.nfc-field-value.big{font-size:14px;font-weight:700;letter-spacing:2px;color:#2DC98E;}
+
+/* Patient ID badge */
+.pid-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(45,201,142,.15);border:1px solid rgba(45,201,142,.3);border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;color:#2DC98E;letter-spacing:1px;font-family:'Courier New',monospace;}
+
+/* Download button */
+.btn-download{width:100%;padding:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;}
+.btn-download:hover{background:rgba(255,255,255,.18);}
+
+/* Success action buttons */
+.success-actions{display:flex;gap:10px;margin-top:4px;}
+.success-actions .btn-cancel{flex:1;}
+.success-actions .btn-create{flex:1;}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;background:#1a1a2e;color:#fff;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.2);transition:all .4s cubic-bezier(.34,1.56,.64,1);z-index:999;display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;min-width:260px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-left:4px solid var(--green);}
+.toast.error{border-left:4px solid var(--red);}
+.toast.info{border-left:4px solid var(--blue);}
+
+/* FOOTER */
+footer{background:#1a1a2e;color:#fff;padding:40px 20px;margin-top:60px;border-top:1px solid rgba(255,255,255,.1);}
+.footer-inner{max-width:1200px;margin:0 auto;text-align:center;}
+.footer-text{font-size:14px;color:rgba(255,255,255,.6);margin-bottom:16px;}
+.footer-links{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;}
+.footer-link{color:rgba(255,255,255,.6);text-decoration:none;font-size:13px;transition:color .2s;}
+.footer-link:hover{color:#fff;}
+
+@media(max-width:768px){
+  .navbar{padding:16px 20px;}
+  .container{padding:24px 16px;}
+  .top-row{flex-direction:column;}
+  .modal-header,.modal-body{padding-left:20px;padding-right:20px;}
+  .form-row{grid-template-columns:1fr;}
+  .card-data-grid{grid-template-columns:1fr;}
+  .nav-user span{display:none;}
+}
+@media(max-width:480px){
+  .role-grid{grid-template-columns:repeat(3,1fr);}
+  .features-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="home_page.html" class="nav-brand">
+    <div class="nav-brand-icon">🛡️</div>
+    <div><div class="nav-brand-text">MedPass</div><span class="nav-brand-sub">Admin Portal</span></div>
+  </a>
+  <div class="nav-right">
+    <div class="nav-user">
+      <div class="nav-user-avatar">🛡️</div>
+      <span data-user="name">…</span>
+    </div>
+    <a href="home_page.html" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </a>
+    <button class="btn-logout" onclick="logout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="container">
+  <div class="dashboard-title">🛡️ Admin Dashboard</div>
+  <div class="top-row">
+    <div class="admin-intro">
+      <h2>MedPass Administration</h2>
+      <p>Manage accounts, cards, and system operations</p>
+    </div>
+    <button class="btn-add-user" onclick="openAddUser()">
+      <span class="plus">＋</span> Add User
+    </button>
+  </div>
+
+  <div class="features-grid">
+    <a href="patient_account_requests.html" class="feature-card">
+      <div class="feature-icon blue">👥</div>
+      <h3 class="feature-title">Patient Account Requests</h3>
+      <p class="feature-desc">Review and approve account creation requests from hospitals</p>
+    </a>
+    <a href="card_status_tracking_admin.html" class="feature-card">
+      <div class="feature-icon purple">📋</div>
+      <h3 class="feature-title">Card Status Tracking</h3>
+      <p class="feature-desc">Monitor card delivery status (Received, Pending, Sent)</p>
+    </a>
+    <a href="activation_requests.html" class="feature-card">
+      <div class="feature-icon green">✅</div>
+      <h3 class="feature-title">Activation Requests</h3>
+      <p class="feature-desc">Process card and service activation requests after payment confirmation</p>
+    </a>
+    <a href="service_status_tracking.html" class="feature-card">
+      <div class="feature-icon red">🏢</div>
+      <h3 class="feature-title">Service Status Tracking</h3>
+      <p class="feature-desc">Monitor hospital service registrations, activation dates, and expiry dates</p>
+    </a>
+    <a href="system_indicators.html" class="feature-card">
+      <div class="feature-icon orange">📊</div>
+      <h3 class="feature-title">System Indicators</h3>
+      <p class="feature-desc">View statistics and analytics for card requests and activations</p>
+    </a>
+    <a href="support_requests_admin.html" class="feature-card">
+      <div class="feature-icon teal">🔔</div>
+      <h3 class="feature-title">Support Requests</h3>
+      <p class="feature-desc">Manage and respond to user support requests</p>
+    </a>
+    <a href="admin_user_management.html" class="feature-card">
+      <div class="feature-icon blue">🗂️</div>
+      <h3 class="feature-title">User Management</h3>
+      <p class="feature-desc">View, edit, activate or delete all user accounts</p>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <p class="footer-text">© 2026 MedPass. All rights reserved.</p>
+    <div class="footer-links">
+      <a href="#" class="footer-link">Privacy Policy</a>
+      <a href="#" class="footer-link">Terms of Service</a>
+      <a href="#" class="footer-link">Contact Us</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ADD USER MODAL -->
+<div class="modal-overlay" id="addUserModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <div class="modal-header-icon">👤</div>
+        <div>
+          <h2>Add New User</h2>
+          <p>Creates Firebase Auth + Firestore profile</p>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeAddUser()">✕</button>
+    </div>
+
+    <div class="modal-body" id="modalBody">
+
+      <!-- Role selector -->
+      <span class="role-label">Select role</span>
+      <div class="role-grid" id="roleGrid">
+        <button class="role-pill" data-role="Hospital"              onclick="selectRole(this)"><span class="rpi">🏥</span>Hospital</button>
+        <button class="role-pill" data-role="Doctor"                onclick="selectRole(this)"><span class="rpi">👨‍⚕️</span>Doctor</button>
+        <button class="role-pill" data-role="Pharmacy"              onclick="selectRole(this)"><span class="rpi">💊</span>Pharmacy</button>
+        <button class="role-pill" data-role="Blood Analysis Center" onclick="selectRole(this)"><span class="rpi">🧪</span>Lab</button>
+        <button class="role-pill" data-role="Radiology Center"      onclick="selectRole(this)"><span class="rpi">📷</span>Radiology</button>
+        <button class="role-pill" data-role="Admin"                 onclick="selectRole(this)"><span class="rpi">🛡️</span>Admin</button>
+      </div>
+
+      <!-- Patient card hint — only visible when Patient is selected -->
+      <div class="patient-hint" id="patientHint">
+        <span class="patient-hint-icon">💳</span>
+        <div class="patient-hint-text">
+          <strong>Patient card will be auto-generated</strong>
+          A unique Patient ID, QR code, and NFC payload will be created and saved to this account automatically.
+        </div>
+      </div>
+
+      <!-- Form fields -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>First name</label>
+          <div class="input-wrap"><span class="input-icon">✏️</span><input type="text" id="f_first" placeholder="Ahmed"/></div>
+        </div>
+        <div class="form-group">
+          <label>Last name</label>
+          <div class="input-wrap"><span class="input-icon">✏️</span><input type="text" id="f_last" placeholder="Benali"/></div>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Email address</label>
+          <div class="input-wrap"><span class="input-icon">✉️</span><input type="email" id="f_email" placeholder="ahmed@medpass.dz"/></div>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-wrap"><span class="input-icon">🔒</span><input type="password" id="f_password" placeholder="Min. 6 characters"/></div>
+          <span class="form-hint">User can reset password via "Forgot password" on the login page.</span>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Phone (optional)</label>
+          <div class="input-wrap"><span class="input-icon">📞</span><input type="tel" id="f_phone" placeholder="+213 555 000 000"/></div>
+        </div>
+      </div>
+      <div class="status-row">
+        <span>Account active</span>
+        <label class="toggle">
+          <input type="checkbox" id="f_status" checked/>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeAddUser()">Cancel</button>
+        <button class="btn-create" id="createBtn" onclick="createUser()">
+          <span id="createBtnText">Create User</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let selectedRole = null;
+
+// ── Role selection ────────────────────────────────────────────
+function selectRole(el) {
+  document.querySelectorAll('.role-pill').forEach(p => {
+    p.classList.remove('selected','patient-selected');
+  });
+  const role = el.dataset.role;
+  el.classList.add(role === 'Patient' ? 'patient-selected' : 'selected');
+  selectedRole = role;
+
+  // Show/hide patient hint
+  const hint = document.getElementById('patientHint');
+  hint.classList.toggle('visible', role === 'Patient');
+
+  // Update button label
+  document.getElementById('createBtnText').textContent =
+    role === 'Patient' ? 'Create Patient + Generate Card' : 'Create User';
+}
+
+// ── Modal open/close ──────────────────────────────────────────
+function openAddUser() {
+  selectedRole = null;
+
+  // Restore original form HTML in case the success screen replaced it
+  document.getElementById('modalBody').innerHTML = `
+      <!-- Role selector -->
+      <span class="role-label">Select role</span>
+      <div class="role-grid" id="roleGrid">
+        <button class="role-pill" data-role="Hospital"              onclick="selectRole(this)"><span class="rpi">🏥</span>Hospital</button>
+        <button class="role-pill" data-role="Doctor"                onclick="selectRole(this)"><span class="rpi">👨‍⚕️</span>Doctor</button>
+        <button class="role-pill" data-role="Pharmacy"              onclick="selectRole(this)"><span class="rpi">💊</span>Pharmacy</button>
+        <button class="role-pill" data-role="Blood Analysis Center" onclick="selectRole(this)"><span class="rpi">🧪</span>Lab</button>
+        <button class="role-pill" data-role="Radiology Center"      onclick="selectRole(this)"><span class="rpi">📷</span>Radiology</button>
+        <button class="role-pill" data-role="Admin"                 onclick="selectRole(this)"><span class="rpi">🛡️</span>Admin</button>
+      </div>
+
+      <!-- Patient card hint -->
+      <div class="patient-hint" id="patientHint">
+        <span class="patient-hint-icon">💳</span>
+        <div class="patient-hint-text">
+          <strong>Patient card will be auto-generated</strong>
+          A unique Patient ID, QR code, and NFC payload will be created and saved to this account automatically.
+        </div>
+      </div>
+
+      <!-- Form fields -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>First name</label>
+          <div class="input-wrap"><span class="input-icon">✏️</span><input type="text" id="f_first" placeholder="Ahmed"/></div>
+        </div>
+        <div class="form-group">
+          <label>Last name</label>
+          <div class="input-wrap"><span class="input-icon">✏️</span><input type="text" id="f_last" placeholder="Benali"/></div>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Email address</label>
+          <div class="input-wrap"><span class="input-icon">✉️</span><input type="email" id="f_email" placeholder="ahmed@medpass.dz"/></div>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-wrap"><span class="input-icon">🔒</span><input type="password" id="f_password" placeholder="Min. 6 characters"/></div>
+          <span class="form-hint">User can reset password via "Forgot password" on the login page.</span>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Phone (optional)</label>
+          <div class="input-wrap"><span class="input-icon">📞</span><input type="tel" id="f_phone" placeholder="+213 555 000 000"/></div>
+        </div>
+      </div>
+      <div class="status-row">
+        <span>Account active</span>
+        <label class="toggle">
+          <input type="checkbox" id="f_status" checked/>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeAddUser()">Cancel</button>
+        <button class="btn-create" id="createBtn" onclick="createUser()">
+          <span id="createBtnText">Create User</span>
+        </button>
+      </div>`;
+
+  document.getElementById('addUserModal').classList.add('active');
+}
+
+function closeAddUser() {
+  document.getElementById('addUserModal').classList.remove('active');
+}
+
+document.getElementById('addUserModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAddUser();
+});
+
+// ── Generate unique Patient ID ────────────────────────────────
+function generatePatientId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no confusables
+  let id = 'MP-';
+  for (let i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
+
+// ── Generate NFC NDEF payload string ─────────────────────────
+// Format: a URI record pointing to the patient's MedPass profile URL.
+// When an NFC reader scans the card, it opens this URL.
+// The raw NDEF hex is also stored so it can be written to a physical NFC chip.
+function generateNfcPayload(patientId, uid) {
+  const url = `https://medpass.dz/patient/${uid}`;
+  // NDEF URI record (type 0x55), prefix 0x03 = "https://"
+  const prefix = 0x03;
+  const uriBody = `medpass.dz/patient/${uid}`;
+  const payloadBytes = [prefix, ...uriBody.split('').map(c => c.charCodeAt(0))];
+  const payloadLen = payloadBytes.length;
+  // NDEF record header: MB=1 ME=1 SR=1 TNF=001 (Well-Known), Type Length=1, Payload Length
+  const header = [0xD1, 0x01, payloadLen, 0x55];
+  const ndefHex = [...header, ...payloadBytes]
+    .map(b => b.toString(16).padStart(2,'0').toUpperCase())
+    .join(' ');
+  return { url, ndefHex };
+}
+
+// ── Main create function ──────────────────────────────────────
+async function createUser() {
+  const first    = document.getElementById('f_first').value.trim();
+  const last     = document.getElementById('f_last').value.trim();
+  const email    = document.getElementById('f_email').value.trim();
+  const password = document.getElementById('f_password').value;
+  const phone    = document.getElementById('f_phone').value.trim();
+  const status   = document.getElementById('f_status').checked ? 'active' : 'inactive';
+  const name     = `${first} ${last}`.trim();
+
+  // Validate
+  if (!selectedRole)                    { showToast('Please select a role.', 'error'); return; }
+  if (!first)                           { showToast('First name is required.', 'error'); return; }
+  if (!email)                           { markError('f_email'); showToast('Email is required.', 'error'); return; }
+  if (!password || password.length < 6) { markError('f_password'); showToast('Password must be at least 6 characters.', 'error'); return; }
+
+  const btn = document.getElementById('createBtn');
+  btn.disabled = true;
+  document.getElementById('createBtnText').innerHTML = '<div class="spinner"></div> Creating…';
+
+  try {
+    // 1. Create Firebase Auth account (secondAuth keeps admin session intact)
+    const cred = await secondAuth.createUserWithEmailAndPassword(email, password);
+    const uid  = cred.user.uid;
+    await secondAuth.signOut();
+
+    // 2. Build Firestore profile
+    const profile = {
+      name, email, role: selectedRole, phone, status,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastLogin: null
+    };
+
+    // 3. If Patient → generate card data
+    let cardData = null;
+    if (selectedRole === 'Patient') {
+      const patientId = generatePatientId();
+      const { url, ndefHex } = generateNfcPayload(patientId, uid);
+      cardData = {
+        patientId,
+        cardStatus:  'pending',   // pending → sent → received
+        qrData:      url,         // the string encoded in the QR code
+        nfcUrl:      url,         // human-readable URL
+        nfcNdefHex:  ndefHex,     // raw NDEF bytes for writing to NFC chip
+        cardCreatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      Object.assign(profile, cardData);
+    }
+
+    // 4. Write to Firestore (admin is still connected on main app)
+    await db.collection('users').doc(uid).set(profile);
+
+    // 5. Show success screen
+    showSuccessScreen({ name, email, role: selectedRole, status, uid, cardData });
+
+  } catch(err) {
+    btn.disabled = false;
+    document.getElementById('createBtnText').textContent =
+      selectedRole === 'Patient' ? 'Create Patient + Generate Card' : 'Create User';
+    showToast(firebaseError(err.code || err.message), 'error');
+  }
+}
+
+function markError(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('error');
+}
+
+// ── Success screen ────────────────────────────────────────────
+function showSuccessScreen({ name, email, role, status, uid, cardData }) {
+  const icons = {
+    'Hospital':'🏥','Doctor':'👨‍⚕️','Patient':'👤',
+    'Pharmacy':'💊','Blood Analysis Center':'🧪',
+    'Radiology Center':'📷','Admin':'🛡️'
+  };
+
+  const isPatient = role === 'Patient' && cardData;
+
+  let cardHTML = '';
+  if (isPatient) {
+    cardHTML = `
+      <div class="card-section">
+        <div class="card-section-title">Patient Card Data</div>
+        <div style="text-align:center;margin-bottom:16px;">
+          <div class="pid-badge">🆔 ${cardData.patientId}</div>
+        </div>
+        <div class="card-data-grid">
+          <div class="qr-box">
+            <div class="qr-wrapper" id="qrContainer"></div>
+            <span class="qr-label">QR Code — scan to open profile</span>
+          </div>
+          <div class="nfc-box">
+            <div class="nfc-field">
+              <div class="nfc-field-label">Patient ID</div>
+              <div class="nfc-field-value big">${cardData.patientId}</div>
+            </div>
+            <div class="nfc-field">
+              <div class="nfc-field-label">NFC URL</div>
+              <div class="nfc-field-value">${cardData.nfcUrl}</div>
+            </div>
+            <div class="nfc-field">
+              <div class="nfc-field-label">NDEF Hex (write to NFC chip)</div>
+              <div class="nfc-field-value" style="font-size:10px;">${cardData.nfcNdefHex}</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-download" onclick="downloadCard('${cardData.patientId}','${uid}')">
+          ⬇ Download Card Data (JSON)
+        </button>
+      </div>`;
+  }
+
+  const summaryUID = `<div><span class="lbl">UID</span><span style="font-size:11px;color:var(--muted);word-break:break-all">${uid}</span></div>`;
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="success-state">
+      <div class="success-icon">${isPatient ? '💳' : '✅'}</div>
+      <h3>${isPatient ? 'Patient created & card generated!' : 'User created successfully!'}</h3>
+      <p class="sub">Saved in Firebase Auth and Firestore.</p>
+
+      <div class="user-summary">
+        <div><span class="lbl">Name</span><strong>${name}</strong></div>
+        <div><span class="lbl">Email</span>${email}</div>
+        <div><span class="lbl">Role</span>${icons[role]||''} ${role}</div>
+        <div><span class="lbl">Status</span>${status==='active'?'🟢 Active':'🔴 Inactive'}</div>
+        ${summaryUID}
+      </div>
+
+      ${cardHTML}
+
+      <div class="success-actions">
+        <button class="btn-cancel" onclick="closeAddUser()">Close</button>
+        <button class="btn-create" onclick="openAddUser()">Add another</button>
+      </div>
+    </div>`;
+
+  // Generate QR code after DOM is updated
+  if (isPatient) {
+    setTimeout(() => {
+      const container = document.getElementById('qrContainer');
+      if (container && typeof QRCode !== 'undefined') {
+        new QRCode(container, {
+          text:         cardData.qrData,
+          width:        140,
+          height:       140,
+          colorDark:    '#1a1a2e',
+          colorLight:   '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }
+    }, 80);
+  }
+}
+
+// ── Download card data as JSON ────────────────────────────────
+function downloadCard(patientId, uid) {
+  db.collection('users').doc(uid).get().then(snap => {
+    if (!snap.exists) return;
+    const d = snap.data();
+    const payload = {
+      patientId:    d.patientId,
+      name:         d.name,
+      email:        d.email,
+      uid:          uid,
+      qrData:       d.qrData,
+      nfcUrl:       d.nfcUrl,
+      nfcNdefHex:   d.nfcNdefHex,
+      cardStatus:   d.cardStatus,
+      cardCreatedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = `medpass-card-${patientId}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 5000);
+}
+
+// ── Firebase error messages ───────────────────────────────────
+function firebaseError(code) {
+  const map = {
+    'auth/email-already-in-use':   'This email is already registered.',
+    'auth/invalid-email':          'Invalid email address.',
+    'auth/weak-password':          'Password too weak (min. 6 characters).',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+    'auth/too-many-requests':      'Too many attempts. Try again later.',
+    'permission-denied':           'Firestore permission denied — check your security rules.',
+  };
+  return map[code] || `Error: ${code}`;
+}
+</script>
+</body>
+</html>

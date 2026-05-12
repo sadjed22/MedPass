@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>View Statistics - MedPass Pharmacy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;
+  --blue:#3B82F6;
+  --teal:#14B8A6;
+  --red:#EF4444;
+  --text:#1a1a2e;
+  --muted:#6B7280;
+  --border:#E5E7EB;
+  --white:#FFFFFF;
+}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);
+  min-height:100vh;
+  margin:0;
+  padding:0;
+}
+
+/* ── NAVBAR ── */
+.navbar{
+  background:#fff;
+  padding:16px 40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+
+.nav-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-decoration:none;
+  font-size:20px;
+  font-weight:700;
+}
+
+.nav-brand-icon{
+  width:32px;
+  height:32px;
+  background:var(--teal);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:18px;
+}
+
+.nav-brand-text{
+  color:var(--teal);
+  letter-spacing:-0.5px;
+}
+
+.nav-brand-sub{
+  font-size:11px;
+  color:var(--muted);
+  font-weight:400;
+  display:block;
+}
+
+.nav-right{
+  display:flex;
+  align-items:center;
+  gap:24px;
+}
+
+.nav-link{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  text-decoration:none;
+  color:var(--text);
+  font-weight:500;
+  font-size:14px;
+  transition:color .2s;
+}
+
+.nav-link:hover{
+  color:var(--teal);
+}
+
+/* ── MAIN CONTENT ── */
+.container{
+  max-width:950px;
+  margin:0 auto;
+  padding:40px 20px;
+}
+
+.page-header{
+  margin-bottom:40px;
+}
+
+.back-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 14px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text);
+  text-decoration:none;
+  font-weight:500;
+  font-size:12px;
+  cursor:pointer;
+  transition:all .2s;
+  margin-bottom:20px;
+}
+
+.back-btn:hover{
+  background:#f9fafb;
+  border-color:var(--muted);
+}
+
+.page-title{
+  display:inline-block;
+  background:var(--teal);
+  color:#fff;
+  padding:10px 20px;
+  border-radius:10px;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:-0.3px;
+}
+
+/* ── STATS GRID ── */
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:20px;
+  margin-bottom:40px;
+}
+
+.stat-card{
+  background:#fff;
+  border-radius:12px;
+  padding:24px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+.stat-icon{
+  width:60px;
+  height:60px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:28px;
+  flex-shrink:0;
+}
+
+.stat-icon.green{
+  background:rgba(45,201,142,.15);
+}
+
+.stat-icon.blue{
+  background:rgba(59,130,246,.15);
+}
+
+.stat-content h3{
+  font-size:13px;
+  color:var(--muted);
+  font-weight:500;
+  margin-bottom:6px;
+}
+
+.stat-number{
+  font-size:28px;
+  font-weight:700;
+  color:var(--text);
+}
+
+/* ── PRESCRIPTIONS SECTION ── */
+.section-title{
+  font-size:16px;
+  font-weight:700;
+  color:var(--text);
+  margin:32px 0 12px 0;
+  letter-spacing:-0.3px;
+}
+
+.section-desc{
+  font-size:13px;
+  color:var(--muted);
+  margin-bottom:24px;
+}
+
+/* ── PRESCRIPTION CARD ── */
+.prescription-card{
+  background:#fff;
+  border-radius:14px;
+  padding:24px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  margin-bottom:20px;
+  transition:all .2s;
+}
+
+.prescription-card:hover{
+  box-shadow:0 4px 12px rgba(0,0,0,.1);
+}
+
+.prescription-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:20px;
+  padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+
+.prescription-info h3{
+  font-size:18px;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:4px;
+}
+
+.prescription-id{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:500;
+}
+
+.download-btn{
+  background:var(--green);
+  color:#fff;
+  border:none;
+  padding:10px 16px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .2s;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.download-btn:hover{
+  background:#24a67a;
+  transform:translateY(-2px);
+}
+
+.prescription-content{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px;
+  margin-bottom:20px;
+}
+
+.info-block h4{
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+  margin-bottom:6px;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+
+.info-block p{
+  font-size:14px;
+  color:var(--text);
+  margin-bottom:14px;
+  line-height:1.5;
+}
+
+.info-block a{
+  color:var(--blue);
+  text-decoration:none;
+  font-weight:500;
+}
+
+.info-block a:hover{
+  text-decoration:underline;
+}
+
+.instructions-block{
+  background:#f0fdf4;
+  border-left:4px solid var(--green);
+  padding:14px;
+  border-radius:8px;
+}
+
+.instructions-block h4{
+  color:var(--green);
+  margin-bottom:8px;
+}
+
+.instructions-block p{
+  color:var(--text);
+  font-size:13px;
+  line-height:1.6;
+  margin:0;
+}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  text-align:center;
+  padding:60px 20px;
+  color:var(--muted);
+}
+
+.empty-state-icon{
+  font-size:48px;
+  margin-bottom:16px;
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .prescription-content{
+    grid-template-columns:1fr;
+  }
+  
+  .prescription-header{
+    flex-direction:column;
+    gap:14px;
+  }
+  
+  .download-btn{
+    width:100%;
+    justify-content:center;
+  }
+  
+  .stats-grid{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="#" class="nav-brand" onclick="goHome(event)">
+    <div class="nav-brand-icon">💊</div>
+    <div>
+      <div class="nav-brand-text">MedPass</div>
+      <span class="nav-brand-sub">Pharmacy Portal</span>
+    </div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">Home</a>
+    <a href="login_page.html" class="nav-link">Logout</a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="container">
+  <div class="page-header">
+    <a href="pharmacy_dashboard.html" class="back-btn">← Back</a>
+    <div class="page-title">📊 View Statistics</div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon green">👥</div>
+      <div class="stat-content">
+        <h3>Total Patients</h3>
+        <div class="stat-number">1,234</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon blue">💊</div>
+      <div class="stat-content">
+        <h3>Total Prescriptions</h3>
+        <div class="stat-number">2</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="section-title">Prescriptions</h3>
+  <p class="section-desc">View and download prescriptions sent by doctors</p>
+
+  <!-- Prescription Card 1 -->
+  <div class="prescription-card">
+    <div class="prescription-header">
+      <div class="prescription-info">
+        <h3>Lisinopril 10mg</h3>
+        <p class="prescription-id">Prescription ID: RX-000001</p>
+      </div>
+      <button class="download-btn" onclick="downloadPDF('RX-000001')">
+        ⬇️ Download PDF
+      </button>
+    </div>
+
+    <div class="prescription-content">
+      <div class="info-block">
+        <h4>👤 Patient Information</h4>
+        <p>
+          <strong>Name:</strong> Ahmed Benali<br/>
+          <strong>ID:</strong> MP-123456
+        </p>
+      </div>
+
+      <div class="info-block">
+        <h4>👨‍⚕️ Prescribing Doctor</h4>
+        <p>
+          <strong>Dr. Sarah Johnson</strong><br/>
+          <strong>Date:</strong> 2026-04-06
+        </p>
+      </div>
+    </div>
+
+    <div class="prescription-content">
+      <div class="info-block">
+        <h4>💊 Dosage</h4>
+        <p>Once daily</p>
+      </div>
+
+      <div class="info-block">
+        <h4>📅 Duration</h4>
+        <p>30 days</p>
+      </div>
+    </div>
+
+    <div class="prescription-content">
+      <div class="info-block">
+        <h4>📝 Date Issued</h4>
+        <p>2026-04-06</p>
+      </div>
+    </div>
+
+    <div class="instructions-block">
+      <h4>📋 Instructions</h4>
+      <p>Take with food in the morning</p>
+    </div>
+  </div>
+
+  <!-- Prescription Card 2 -->
+  <div class="prescription-card">
+    <div class="prescription-header">
+      <div class="prescription-info">
+        <h3>Metformin 500mg</h3>
+        <p class="prescription-id">Prescription ID: RX-000002</p>
+      </div>
+      <button class="download-btn" onclick="downloadPDF('RX-000002')">
+        ⬇️ Download PDF
+      </button>
+    </div>
+
+    <div class="prescription-content">
+      <div class="info-block">
+        <h4>👤 Patient Information</h4>
+        <p>
+          <strong>Name:</strong> Fatima Al-Zahra<br/>
+          <strong>ID:</strong> MP-789012
+        </p>
+      </div>
+
+      <div class="info-block">
+        <h4>👨‍⚕️ Prescribing Doctor</h4>
+        <p>
+          <strong>Dr. Mohammed Al-Kaabi</strong><br/>
+          <strong>Date:</strong> 2026-04-05
+        </p>
+      </div>
+    </div>
+
+    <div class="prescription-content">
+      <div class="info-block">
+        <h4>💊 Dosage</h4>
+        <p>Twice daily</p>
+      </div>
+
+      <div class="info-block">
+        <h4>📅 Duration</h4>
+        <p>60 days</p>
+      </div>
+    </div>
+
+    <div class="prescription-content">
+      <div class="info-block">
+        <h4>📝 Date Issued</h4>
+        <p>2026-04-05</p>
+      </div>
+    </div>
+
+    <div class="instructions-block">
+      <h4>📋 Instructions</h4>
+      <p>Take with meals to reduce stomach upset. Drink plenty of water throughout the day.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function goHome(event) {
+  if (event) event.preventDefault();
+  window.location.href = 'home_page.html';
+}
+
+function downloadPDF(prescriptionId) {
+  alert(`Downloading prescription ${prescriptionId}...`);
+  // In a real application, this would trigger a PDF download
+  console.log(`Downloading prescription: ${prescriptionId}`);
+}
+</script>
+
+</body>
+</html>

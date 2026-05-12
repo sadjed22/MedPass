@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Payment - MedPass</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --green:#2DC98E;
+      --green-dark:#22a874;
+      --blue:#3B82F6;
+      --purple:#8B5CF6;
+      --orange:#F97316;
+      --teal:#14B8A6;
+      --text:#1a1a2e;
+      --muted:#6B7280;
+      --border:#E5E7EB;
+      --bg:#F0F4F8;
+      --white:#FFFFFF;
+      --dark-bg:#0f1117;
+      --dark-card:#1a1d27;
+      --yellow:#FCD34D;
+    }
+    html{scroll-behavior:smooth;}
+    body{font-family:'Inter',sans-serif;color:var(--text);background:var(--bg);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+
+    /* ── NAVBAR ── */
+    .navbar{
+      position:sticky;top:0;z-index:200;
+      background:rgba(255,255,255,0.95);
+      backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--border);
+      padding:0 5%;
+      display:flex;align-items:center;justify-content:space-between;
+      height:60px;
+    }
+    .nav-logo{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:var(--text);text-decoration:none;}
+    .nav-logo-icon{width:28px;height:28px;background:var(--green);border-radius:6px;display:grid;place-items:center;}
+    .nav-logo-icon svg{width:16px;height:16px;}
+
+    /* ── MAIN CONTAINER ── */
+    .main-container{
+      padding:60px 5%;
+      min-height:calc(100vh - 60px);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .payment-card{
+      background:#fff;
+      border-radius:20px;
+      padding:44px 32px;
+      max-width:680px;
+      width:100%;
+      box-shadow:0 8px 28px rgba(0,0,0,.08);
+    }
+
+    /* ── HEADER ── */
+    .back-link{
+      background:transparent;
+      border:none;
+      cursor:pointer;
+      color:var(--muted);
+      font-size:14px;
+      display:flex;align-items:center;gap:6px;
+      text-decoration:none;
+      transition:color .2s;
+      padding:0;
+      margin-bottom:20px;
+    }
+    .back-link:hover{color:var(--text);}
+    .back-link svg{width:18px;height:18px;}
+
+    /* ── ICON AND TITLE ── */
+    .icon-circle{
+      width:64px;height:64px;
+      border-radius:16px;
+      background:linear-gradient(135deg,#FCD34D,#FBBF24);
+      display:grid;place-items:center;
+      margin:0 auto 24px;
+    }
+    .icon-circle svg{width:32px;height:32px;color:#92400E;}
+
+    .payment-title{
+      font-size:24px;
+      font-weight:700;
+      text-align:center;
+      margin-bottom:6px;
+    }
+    .payment-sub{
+      font-size:13px;
+      color:var(--muted);
+      text-align:center;
+      margin-bottom:28px;
+    }
+
+    /* ── AMOUNT DISPLAY ── */
+    .amount-box{
+      background:#F0FDF4;
+      border:1px solid #DCFCE7;
+      border-radius:12px;
+      padding:16px 20px;
+      margin-bottom:28px;
+      display:flex;justify-content:space-between;align-items:center;
+    }
+    .amount-label{
+      font-size:13px;
+      font-weight:600;
+      color:var(--muted);
+    }
+    .amount-value{
+      font-size:20px;
+      font-weight:700;
+      color:var(--green);
+    }
+
+    /* ── FORM GROUPS ── */
+    .form-group{margin-bottom:20px;}
+    .form-label{
+      display:block;
+      font-size:13px;
+      font-weight:600;
+      color:var(--text);
+      margin-bottom:8px;
+    }
+    .form-row{
+      display:grid;grid-template-columns:1fr 1fr;gap:16px;
+    }
+    .form-row.full{grid-template-columns:1fr;}
+
+    input[type="text"],input[type="email"],input[type="password"]{
+      width:100%;
+      padding:11px 14px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      font-size:13px;
+      font-family:inherit;
+      color:var(--text);
+      outline:none;
+      transition:border-color .2s;
+    }
+    input[type="text"]:focus,input[type="email"]:focus,input[type="password"]:focus{
+      border-color:var(--green);
+      box-shadow:0 0 0 3px rgba(45,201,142,.1);
+    }
+    input::placeholder{color:var(--muted);}
+
+    /* ── SECTION TITLE ── */
+    .section-title{
+      font-size:14px;
+      font-weight:700;
+      color:var(--text);
+      margin-top:28px;
+      margin-bottom:16px;
+      padding-bottom:12px;
+      border-bottom:1px solid var(--border);
+    }
+
+    /* ── BUTTON ── */
+    .btn-confirm{
+      background:linear-gradient(135deg,#FCD34D,#FBBF24);
+      color:#92400E;
+      border:none;
+      padding:14px 28px;
+      border-radius:10px;
+      font-size:15px;
+      font-weight:700;
+      width:100%;
+      cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      gap:8px;
+      transition:transform .2s,box-shadow .2s;
+      margin-top:28px;
+    }
+    .btn-confirm:hover{
+      transform:translateY(-2px);
+      box-shadow:0 8px 24px rgba(252,211,77,.3);
+    }
+    .btn-confirm svg{width:18px;height:18px;}
+
+    /* ── FOOTER NOTE ── */
+    .security-note{
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
+      margin-top:16px;
+      padding-top:16px;
+      border-top:1px solid var(--border);
+    }
+
+    /* responsive */
+    @media(max-width:600px){
+      .payment-card{
+        padding:28px 20px;
+        border-radius:16px;
+      }
+      .payment-title{font-size:20px;}
+      .form-row{grid-template-columns:1fr;}
+      .amount-box{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:8px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="home_page.html" class="nav-logo">
+    <div class="nav-logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+    </div>
+    MedPass
+  </a>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="main-container">
+  <div class="payment-card">
+    <button class="back-link" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back
+    </button>
+
+    <div class="icon-circle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
+    </div>
+
+    <h1 class="payment-title">Payment</h1>
+    <p class="payment-sub">Pay with CIB Bank Card</p>
+
+    <!-- Amount Display -->
+    <div class="amount-box">
+      <div class="amount-label">Total Amount:</div>
+      <div class="amount-value" id="totalAmount">432000 DZD</div>
+    </div>
+
+    <!-- Payment Form -->
+    <form id="paymentForm" onsubmit="handleSubmit(event)">
+      <!-- Name Fields -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">First Name</label>
+          <input type="text" placeholder="First Name" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input type="text" placeholder="Last Name" required/>
+        </div>
+      </div>
+
+      <!-- RIB Number -->
+      <div class="form-group form-row full">
+        <label class="form-label">RIB Number</label>
+        <input type="text" placeholder="RIB Number" required/>
+      </div>
+
+      <!-- Expiry and CVV -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Expiry Date</label>
+          <input type="text" placeholder="MM/YY" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CVV2</label>
+          <input type="text" placeholder="CVV2" maxlength="4" required/>
+        </div>
+      </div>
+
+      <!-- Payment Amount -->
+      <div class="form-group form-row full">
+        <label class="form-label">Payment Amount (DZD)</label>
+        <input type="text" id="paymentAmount" placeholder="432000" readonly/>
+      </div>
+
+      <!-- Section: Account Credentials -->
+      <div class="section-title">Account Credentials</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" placeholder="Username" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" placeholder="Password" required/>
+        </div>
+      </div>
+
+      <!-- Confirm Button -->
+      <button type="submit" class="btn-confirm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
+        Confirm Payment - <span id="confirmAmount">432000 DZD</span>
+      </button>
+    </form>
+
+    <div class="security-note">Secure payment processing • 256-bit encryption</div>
+  </div>
+</div>
+
+<script>
+  // Calculate and display amount
+  function updateAmount() {
+    const amount = localStorage.getItem('paymentAmount');
+    if (amount) {
+      const formatted = parseInt(amount).toLocaleString();
+      document.getElementById('totalAmount').textContent = formatted + ' DZD';
+      document.getElementById('paymentAmount').value = formatted;
+      document.getElementById('confirmAmount').textContent = formatted + ' DZD';
+    } else {
+      // Default for patient payment
+      const formatted = '400';
+      document.getElementById('totalAmount').textContent = formatted + ' DZD';
+      document.getElementById('paymentAmount').value = formatted;
+      document.getElementById('confirmAmount').textContent = formatted + ' DZD';
+    }
+  }
+
+  function goBack() {
+    const amount = localStorage.getItem('paymentAmount');
+    if (amount && (amount == 102000 || amount == 204000 || amount == 306000)) {
+      // Came from subscription plan
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = 'service_activation.html';
+      }
+    } else {
+      // Direct from patient service
+      window.location.href = 'service_activation.html';
+    }
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    // Show success message or redirect
+    alert('Payment submitted successfully!');
+    // Clear the stored amount
+    localStorage.removeItem('paymentAmount');
+    window.location.href = 'home_page.html';
+  }
+
+  // Initialize on load
+  window.addEventListener('load', updateAmount);
+</script>
+
+</body>
+</html>

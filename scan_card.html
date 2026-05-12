@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Scan Card & Send to Doctor - MedPass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#2DC98E;
+  --blue:#3B82F6;
+  --purple:#8B5CF6;
+  --teal:#14B8A6;
+  --red:#EF4444;
+  --text:#1a1a2e;
+  --muted:#6B7280;
+  --border:#E5E7EB;
+  --white:#FFFFFF;
+}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,#F0F7F4 0%,#F5F3FF 100%);
+  min-height:100vh;
+  margin:0;
+  padding:0;
+}
+
+/* ── NAVBAR ── */
+.navbar{
+  background:#fff;
+  padding:16px 40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+
+.nav-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-decoration:none;
+  font-size:20px;
+  font-weight:700;
+}
+
+.nav-brand-icon{
+  width:32px;
+  height:32px;
+  background:var(--green);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:18px;
+}
+
+.nav-brand-text{
+  color:var(--green);
+  letter-spacing:-0.5px;
+}
+
+.nav-brand-sub{
+  font-size:11px;
+  color:var(--muted);
+  font-weight:400;
+  display:block;
+}
+
+.nav-right{
+  display:flex;
+  align-items:center;
+  gap:24px;
+}
+
+.nav-link{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  text-decoration:none;
+  color:var(--text);
+  font-weight:500;
+  font-size:14px;
+  transition:color .2s;
+}
+
+.nav-link:hover{
+  color:var(--green);
+}
+
+/* ── MAIN CONTENT ── */
+.container{
+  max-width:700px;
+  margin:0 auto;
+  padding:40px 20px;
+}
+
+.page-header{
+  margin-bottom:40px;
+}
+
+.back-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 16px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:10px;
+  color:var(--text);
+  text-decoration:none;
+  font-weight:500;
+  font-size:14px;
+  cursor:pointer;
+  transition:all .2s;
+  margin-bottom:20px;
+}
+
+.back-btn:hover{
+  background:#f9fafb;
+  border-color:var(--muted);
+}
+
+.page-title{
+  display:inline-block;
+  background:var(--purple);
+  color:#fff;
+  padding:12px 24px;
+  border-radius:12px;
+  font-size:20px;
+  font-weight:700;
+  letter-spacing:-0.5px;
+}
+
+/* ── SCAN CARD ── */
+.scan-card{
+  background:#fff;
+  border-radius:16px;
+  padding:40px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  text-align:center;
+  margin-bottom:40px;
+}
+
+.scan-icon-circle{
+  width:120px;
+  height:120px;
+  background:rgba(139,92,246,.1);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0 auto 24px;
+  font-size:56px;
+  animation:pulse 2s infinite;
+}
+
+@keyframes pulse{
+  0%{
+    box-shadow:0 0 0 0 rgba(139,92,246,.7);
+  }
+  70%{
+    box-shadow:0 0 0 20px rgba(139,92,246,0);
+  }
+  100%{
+    box-shadow:0 0 0 0 rgba(139,92,246,0);
+  }
+}
+
+.scan-title{
+  font-size:24px;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:12px;
+  letter-spacing:-0.5px;
+}
+
+.scan-desc{
+  font-size:15px;
+  color:var(--muted);
+  line-height:1.6;
+  margin-bottom:32px;
+}
+
+.scan-btn{
+  background:var(--purple);
+  color:#fff;
+  border:none;
+  padding:14px 32px;
+  border-radius:10px;
+  font-size:16px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .3s;
+  box-shadow:0 4px 15px rgba(139,92,246,.2);
+}
+
+.scan-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 25px rgba(139,92,246,.3);
+  background:#7c3aed;
+}
+
+.scan-btn:active{
+  transform:translateY(0);
+}
+
+.or-divider{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:32px 0;
+  color:var(--muted);
+}
+
+.or-divider::before,
+.or-divider::after{
+  content:'';
+  flex:1;
+  height:1px;
+  background:var(--border);
+}
+
+.manual-entry{
+  padding:24px;
+  background:#f9fafb;
+  border-radius:12px;
+  margin-top:24px;
+}
+
+.form-group{
+  margin-bottom:16px;
+  text-align:left;
+}
+
+.form-group label{
+  display:block;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text);
+  margin-bottom:8px;
+}
+
+.form-group input,
+.form-group select{
+  width:100%;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  font-size:14px;
+  font-family:'Inter',sans-serif;
+  background:#fff;
+  transition:all .2s;
+}
+
+.form-group input:focus,
+.form-group select:focus{
+  outline:none;
+  border-color:var(--blue);
+  box-shadow:0 0 0 4px rgba(59,130,246,.08);
+}
+
+.send-btn{
+  width:100%;
+  background:linear-gradient(90deg,#8B5CF6 0%,#7C3AED 100%);
+  color:#fff;
+  border:none;
+  padding:12px;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .3s;
+  margin-top:16px;
+}
+
+.send-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 15px rgba(139,92,246,.2);
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .scan-card{
+    padding:24px;
+  }
+  
+  .scan-icon-circle{
+    width:100px;
+    height:100px;
+    font-size:48px;
+  }
+  
+  .scan-title{
+    font-size:20px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="#" class="nav-brand" onclick="goHome(event)">
+    <div class="nav-brand-icon">🏥</div>
+    <div>
+      <div class="nav-brand-text">MedPass</div>
+      <span class="nav-brand-sub">Hospital Portal</span>
+    </div>
+  </a>
+  <div class="nav-right">
+    <a href="home_page.html" class="nav-link">Home</a>
+    <a href="login_page.html" class="nav-link">Logout</a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="container">
+  <div class="page-header">
+    <a href="hospital_dashboard.html" class="back-btn">← Back</a>
+    <div class="page-title">📱 Scan Card & Send to Doctor</div>
+  </div>
+
+  <div class="scan-card">
+    <div class="scan-icon-circle">📱</div>
+    <h2 class="scan-title">Scan Patient Card</h2>
+    <p class="scan-desc">Place the patient's MedPass card near the NFC reader</p>
+    <button class="scan-btn" onclick="startNFCScan()">Scan NFC</button>
+
+    <div class="or-divider">or</div>
+
+    <div class="manual-entry">
+      <form onsubmit="handleManualEntry(event)">
+        <div class="form-group">
+          <label for="patientId">Patient ID or Name</label>
+          <input type="text" id="patientId" placeholder="Enter patient ID or full name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="doctor">Select Doctor</label>
+          <select id="doctor" required>
+            <option value="">Choose a doctor</option>
+            <option value="Dr. Ahmad Hassan">Dr. Ahmad Hassan - Cardiology</option>
+            <option value="Dr. Fatima Al-Mansouri">Dr. Fatima Al-Mansouri - Neurology</option>
+            <option value="Dr. Mohammed Al-Kaabi">Dr. Mohammed Al-Kaabi - Orthopedics</option>
+            <option value="Dr. Amina Al-Falahi">Dr. Amina Al-Falahi - Pediatrics</option>
+            <option value="Dr. Hassan Al-Mansoori">Dr. Hassan Al-Mansoori - Dermatology</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Additional Notes (Optional)</label>
+          <input type="text" id="notes" placeholder="Enter any relevant information">
+        </div>
+
+        <button type="submit" class="send-btn">Send to Doctor</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function goHome(event) {
+  if (event) event.preventDefault();
+  window.location.href = 'home_page.html';
+}
+
+function startNFCScan() {
+  alert('NFC Scan initiated. Please place the patient card near the reader.');
+  // Simulating card scan
+  setTimeout(() => {
+    document.getElementById('patientId').value = 'Patient ID: MED-2026-001';
+    document.getElementById('patientId').focus();
+  }, 1500);
+}
+
+function handleManualEntry(event) {
+  event.preventDefault();
+  const patientId = document.getElementById('patientId').value;
+  const doctor = document.getElementById('doctor').value;
+  alert(`Patient record sent to ${doctor} successfully!`);
+  event.target.reset();
+}
+</script>
+
+</body>
+</html>
