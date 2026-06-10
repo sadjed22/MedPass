@@ -112,13 +112,13 @@ body{
     <p>Select your role to continue</p>
   </div>
   <div class="roles-grid">
-    <div class="role-card" onclick="selectRole('Hospital','assets/h')"><span class="role-icon"><img src="assets/h.png" alt="Hospital"/></span><div class="role-name">Hospital</div></div>
-    <div class="role-card" onclick="selectRole('Doctor','assets/d')"><span class="role-icon"><img src="assets/d.png" alt="Doctor"/></span><div class="role-name">Doctor</div></div>
-    <div class="role-card" onclick="selectRole('Patient','assets/p')"><span class="role-icon"><img src="assets/p.png" alt="Patient"/></span><div class="role-name">Patient</div></div>
-    <div class="role-card" onclick="selectRole('Blood Analysis Center','assets/b')"><span class="role-icon"><img src="assets/b.png" alt="Blood Analysis Center"/></span><div class="role-name">Blood Analysis Center</div></div>
-    <div class="role-card" onclick="selectRole('Radiology Center','assets/r')"><span class="role-icon"><img src="assets/r.png" alt="Radiology Center"/></span><div class="role-name">Radiology Center</div></div>
-    <div class="role-card" onclick="selectRole('Pharmacy','assets/ph')"><span class="role-icon"><img src="assets/ph.png" alt="Pharmacy"/></span><div class="role-name">Pharmacy</div></div>
-    <div class="role-card" onclick="selectRole('Admin','assets/a')"><span class="role-icon"><img src="assets/a.png" alt="Admin"/></span><div class="role-name">Admin</div></div>
+    <div class="role-card" onclick="selectRole('Hospital','assets/h')"><span class="role-icon"><img src="assets/h.PNG" alt="Hospital"/></span><div class="role-name">Hospital</div></div>
+    <div class="role-card" onclick="selectRole('Doctor','assets/d')"><span class="role-icon"><img src="assets/d.PNG" alt="Doctor"/></span><div class="role-name">Doctor</div></div>
+    <div class="role-card" onclick="selectRole('Patient','assets/p')"><span class="role-icon"><img src="assets/p.PNG" alt="Patient"/></span><div class="role-name">Patient</div></div>
+    <div class="role-card" onclick="selectRole('Blood Analysis Center','assets/b')"><span class="role-icon"><img src="assets/b.PNG" alt="Blood Analysis Center"/></span><div class="role-name">Blood Analysis Center</div></div>
+    <div class="role-card" onclick="selectRole('Radiology Center','assets/r')"><span class="role-icon"><img src="assets/r.PNG" alt="Radiology Center"/></span><div class="role-name">Radiology Center</div></div>
+    <div class="role-card" onclick="selectRole('Pharmacy','assets/ph')"><span class="role-icon"><img src="assets/ph.PNG" alt="Pharmacy"/></span><div class="role-name">Pharmacy</div></div>
+    <div class="role-card" onclick="selectRole('Admin','assets/a')"><span class="role-icon"><img src="assets/a.PNG" alt="Admin"/></span><div class="role-name">Admin</div></div>
   </div>
   <div class="footer">
     <a href="#" class="back-to-home" onclick="goHome(event)">← Back to Home</a>
@@ -130,7 +130,7 @@ body{
 <div class="login-container" id="loginContainer">
   <div class="login-card">
     <div class="login-header">
-      <div class="login-icon" id="loginIcon"><img src="assets/h.png" alt="role icon"/></div>
+      <div class="login-icon" id="loginIcon"><img src="assets/h.PNG" alt="role icon"/></div>
       <h2 id="loginRoleTitle">Hospital Login</h2>
       <p>Enter your credentials to access your dashboard</p>
     </div>
@@ -256,7 +256,7 @@ function setLoading(loading) {
 // ================================================================
 function selectRole(role, iconPath) {
   currentRole = role;
-  document.getElementById('loginIcon').innerHTML = `<img src="${iconPath}.png" alt="${role}"/>`;
+  document.getElementById('loginIcon').innerHTML = `<img src="${iconPath}.PNG" alt="${role}"/>`;
   document.getElementById('loginRoleTitle').textContent = `${role} Login`;
   document.getElementById('roleSelectionContainer').style.display = 'none';
   document.getElementById('loginContainer').classList.add('active');

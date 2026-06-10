@@ -557,6 +557,13 @@ async function approveRequest() {
       addedBy: 'admin_approval',
       status: 'approved'
     }));
+        // 4b. Prepare medical records with metadata
+    const medicalRecordsWithMeta = (req.medicalRecords || []).map(record => ({
+      ...record,
+      addedAt: new Date().toISOString(),
+      addedBy: 'admin_approval',
+      status: 'approved'
+    }));
 
     // 5. Build Firestore user profile with medical records
     const profile = {
@@ -578,6 +585,7 @@ async function approveRequest() {
       // Medical records - THIS IS KEY FOR DOCTOR DASHBOARD
       bloodTests:      bloodTestsWithMeta,
       radiologyReports: radiologyWithMeta,
+      medicalRecords:   medicalRecordsWithMeta, 
 
       // Card data
       patientId:       patientId,
@@ -621,6 +629,16 @@ async function approveRequest() {
         });
       }
     }
+    if (medicalRecordsWithMeta.length > 0) {
+      for (const record of medicalRecordsWithMeta) {
+        await db.collection('medicalRecords').add({
+          ...record,
+          patientId:   uid,
+          patientName: req.name,
+          createdAt:   firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
 
     // 9. Update patientRequest doc: mark approved, store uid, remove password
     await db.collection('patientRequests').doc(req.id).update({
@@ -658,8 +676,7 @@ async function approveRequest() {
     closeModal();
     showQrModal(patientId, url, req.name);
 
-    showToast(`✅ Account created & card request auto-generated (${bloodTestsWithMeta.length} blood tests, ${radiologyWithMeta.length} radiology reports)`, 'success');
-
+    showToast(`✅ Account created & card request auto-generated (${bloodTestsWithMeta.length} blood tests, ${radiologyWithMeta.length} radiology reports, ${medicalRecordsWithMeta.length} medical records)`, 'success');
   } catch(err) {
     approveBtn.disabled = false;
     rejectBtn.disabled  = false;

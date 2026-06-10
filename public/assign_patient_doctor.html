@@ -412,19 +412,46 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 async function initPage(){await Promise.all([fetchPatients(),fetchDoctors(),fetchAssignments()]);}
 
 async function fetchPatients(){
-  try{const s=await db.collection("users").where("role","==","Patient").get();
-    allPatients=s.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.status!=="inactive");}
-  catch(e){showToast('Could not load patients: '+e.message,'error');}
+  try{
+    const s = await db.collection("users").where("role","==","Patient").get();
+    allPatients = s.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.status!=="inactive");
+  } catch(e){
+    console.error('fetchPatients error:', e);
+    showToast('Could not load patients: '+e.message,'error');
+  }
 }
 async function fetchDoctors(){
-  try{const s=await db.collection("users").where("role","==","Doctor").get();
-    allDoctors=s.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.status!=="inactive");}
-  catch(e){showToast('Could not load doctors: '+e.message,'error');}
+  try{
+    const s = await db.collection("users").where("role","==","Doctor").get();
+    allDoctors = s.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.status!=="inactive");
+  } catch(e){
+    console.error('fetchDoctors error:', e);
+    showToast('Could not load doctors: '+e.message,'error');
+  }
 }
 async function fetchAssignments(){
-  try{const s=await db.collection("assignments").orderBy("assignedAt","desc").get();
-    allAssignments=s.docs.map(d=>({id:d.id,...d.data()}));filteredAssignments=[...allAssignments];renderTable();}
-  catch(e){allAssignments=[];filteredAssignments=[];renderTable();}
+  try{
+    // Filter by assignedBy so Firestore rules can evaluate the query
+    const uid = window.currentUser?.uid;
+    if (!uid) return;
+    const s = await db.collection("assignments")
+      .where("assignedBy", "==", uid)
+      .get();
+    // Sort client-side descending by assignedAt
+    allAssignments = s.docs
+      .map(d => ({id:d.id,...d.data()}))
+      .sort((a,b) => {
+        const ta = a.assignedAt?.toMillis ? a.assignedAt.toMillis() : 0;
+        const tb = b.assignedAt?.toMillis ? b.assignedAt.toMillis() : 0;
+        return tb - ta;
+      });
+    filteredAssignments = [...allAssignments];
+    renderTable();
+  } catch(e){
+    console.error('fetchAssignments error:', e);
+    allAssignments=[];filteredAssignments=[];renderTable();
+    showToast('Could not load assignments: '+e.message,'error');
+  }
 }
 
 // ── MODE SWITCH ──

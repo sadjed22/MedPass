@@ -8,7 +8,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyC8Q0_KTrSHYjQxLUJYtst1NU4g-V8tz8s",
@@ -21,7 +20,10 @@ const firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
-const storage = firebase.storage();
+
+// ── Cloudinary config ────────────────────────────────────────────────────────
+const CLOUDINARY_CLOUD_NAME   = "dtmoqp6f5";    // e.g. "dxyz1234"
+const CLOUDINARY_UPLOAD_PRESET = "medpass_unsigned"; // e.g. "medpass_unsigned"
 
 // Auth guard — only Hospital role
 document.documentElement.style.visibility = "hidden";
@@ -46,10 +48,45 @@ auth.onAuthStateChanged(async (user) => {
 
 async function logout() { await auth.signOut(); window.location.replace("login_page.html"); }
 
-// Add blood test entry
+// ── PDF upload helper (Cloudinary) ───────────────────────────────────────────
+// Uploads a PDF to Cloudinary and returns its secure URL (or null)
+async function uploadPDF(file, storagePath) {
+  if (!file) return null;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('resource_type', 'raw');  // required for non-image files (PDF)
+  // Use storagePath as the public_id so files stay organized in Cloudinary
+  formData.append('public_id', storagePath.replace(/\//g, '_'));
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/raw/upload`,
+    { method: 'POST', body: formData }
+  );
+
+  if (!res.ok) throw new Error('Cloudinary upload failed: ' + res.statusText);
+  const data = await res.json();
+  // Inject fl_attachment so the PDF URL is always directly accessible
+  const url = (data.secure_url || '').replace('/upload/', '/upload/fl_attachment/');
+  return url; // HTTPS URL saved to Firestore
+}
+
+// ── Progress bar helpers ─────────────────────────────────────────────────────
+function setProgress(pct, label) {
+  const bar = document.getElementById('uploadProgressBar');
+  const text = document.getElementById('uploadProgressText');
+  if (bar) bar.style.width = pct + '%';
+  if (text) text.textContent = label;
+}
+function showProgress() { document.getElementById('uploadProgressWrap').style.display = 'block'; }
+function hideProgress() { document.getElementById('uploadProgressWrap').style.display = 'none'; }
+
+// ── Entry builders ───────────────────────────────────────────────────────────
 function addBloodTest() {
   const container = document.getElementById('bloodTestsContainer');
   const index = container.children.length;
+  const uid = 'bt_' + Date.now();
   const div = document.createElement('div');
   div.className = 'blood-test-entry';
   div.innerHTML = `
@@ -78,15 +115,23 @@ function addBloodTest() {
       </div>
     </div>
     <div class="form-group">
-      <label>Reference Range (Optional)</label>
+      <label>Reference Range <span class="opt">(optional)</span></label>
       <input type="text" class="blood-test-range" placeholder="e.g., 4.5-11.0 K/uL"/>
+    </div>
+    <div class="form-group" style="margin-top:12px;">
+      <label>📎 Attach PDF Report <span class="opt">(optional)</span></label>
+      <label class="pdf-attach-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Choose PDF
+        <input type="file" class="blood-test-pdf" accept=".pdf" style="display:none" onchange="previewPdf(this)"/>
+      </label>
+      <div class="pdf-preview-name"></div>
     </div>
     <hr style="margin:16px 0; border-color:var(--border);"/>
   `;
   container.appendChild(div);
 }
 
-// Add radiology entry
 function addRadiology() {
   const container = document.getElementById('radiologyContainer');
   const index = container.children.length;
@@ -118,15 +163,23 @@ function addRadiology() {
       </div>
     </div>
     <div class="form-group">
-      <label>Technique (Optional)</label>
+      <label>Technique <span class="opt">(optional)</span></label>
       <input type="text" class="radiology-technique" placeholder="e.g., PA and Lateral views"/>
+    </div>
+    <div class="form-group" style="margin-top:12px;">
+      <label>📎 Attach PDF Report <span class="opt">(optional)</span></label>
+      <label class="pdf-attach-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Choose PDF
+        <input type="file" class="radiology-pdf" accept=".pdf" style="display:none" onchange="previewPdf(this)"/>
+      </label>
+      <div class="pdf-preview-name"></div>
     </div>
     <hr style="margin:16px 0; border-color:var(--border);"/>
   `;
   container.appendChild(div);
 }
 
-// Add medical record entry
 function addMedicalRecord() {
   const container = document.getElementById('medicalRecordsContainer');
   const index = container.children.length;
@@ -158,12 +211,29 @@ function addMedicalRecord() {
       </div>
     </div>
     <div class="form-group">
-      <label>Notes (Optional)</label>
+      <label>Notes <span class="opt">(optional)</span></label>
       <textarea class="medical-notes" rows="3" placeholder="Additional notes..."></textarea>
+    </div>
+    <div class="form-group" style="margin-top:12px;">
+      <label>📎 Attach PDF Report <span class="opt">(optional)</span></label>
+      <label class="pdf-attach-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Choose PDF
+        <input type="file" class="medical-record-pdf" accept=".pdf" style="display:none" onchange="previewPdf(this)"/>
+      </label>
+      <div class="pdf-preview-name"></div>
     </div>
     <hr style="margin:16px 0; border-color:var(--border);"/>
   `;
   container.appendChild(div);
+}
+
+// Show selected filename next to each file input
+function previewPdf(input) {
+  const nameDiv = input.closest('.form-group').querySelector('.pdf-preview-name');
+  if (nameDiv) {
+    nameDiv.textContent = input.files[0] ? '📄 ' + input.files[0].name : '';
+  }
 }
 </script>
 <style>
@@ -239,7 +309,24 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%
 .add-btn:hover{background:#2563EB;transform:translateY(-1px);}
 
 /* ENTRY STYLES */
-.blood-test-entry, .radiology-entry, .medical-record-entry{background:#fafafa;padding:20px;border-radius:12px;margin-bottom:20px;}
+.blood-test-entry,.radiology-entry,.medical-record-entry{background:#fafafa;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid var(--border);}
+
+/* PDF ATTACH */
+.pdf-attach-label{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:9px 16px;border:1.5px dashed #c7d9f5;border-radius:10px;
+  color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;
+  background:#f0f7ff;transition:all .2s;margin-top:4px;
+}
+.pdf-attach-label:hover{border-color:var(--blue);background:rgba(59,130,246,.08);}
+.pdf-preview-name{font-size:12px;color:var(--green);margin-top:6px;font-weight:500;}
+
+/* UPLOAD PROGRESS */
+#uploadProgressWrap{display:none;background:#f0fdf9;border:1px solid #a7f3d0;border-radius:12px;padding:16px 20px;margin-bottom:20px;}
+#uploadProgressLabel{font-size:13px;font-weight:600;color:#065F46;margin-bottom:8px;}
+#uploadProgressText{font-size:12px;color:var(--muted);margin-top:6px;}
+.progress-track{height:8px;background:#D1FAE5;border-radius:99px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--teal));border-radius:99px;transition:width .3s ease;width:0%;}
 
 /* SUBMIT */
 .submit-btn{background:linear-gradient(90deg,#2DC98E 0%,#14B8A6 100%);color:#fff;border:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .3s;width:100%;box-shadow:0 4px 15px rgba(45,201,142,.2);display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Inter',sans-serif;margin-top:20px;}
@@ -290,6 +377,7 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Logout
     </button>
+  </div>
 </nav>
 
 <div class="container">
@@ -304,6 +392,13 @@ body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#F0F7F4 0%
     <div class="si">✅</div>
     <h3>Registration request submitted!</h3>
     <p>The admin will review and approve this request. The patient account and card will be generated upon approval.</p>
+  </div>
+
+  <!-- UPLOAD PROGRESS -->
+  <div id="uploadProgressWrap">
+    <div id="uploadProgressLabel">⬆️ Uploading files…</div>
+    <div class="progress-track"><div class="progress-fill" id="uploadProgressBar"></div></div>
+    <div id="uploadProgressText">Preparing…</div>
   </div>
 
   <div class="form-card" id="formCard">
@@ -463,162 +558,209 @@ function showToast(msg, type = 'info') {
 async function submitRequest() {
   // Gather basic info
   const firstName = document.getElementById('firstName').value.trim();
-  const lastName = document.getElementById('lastName').value.trim();
-  const dob = document.getElementById('dob').value;
-  const age = document.getElementById('age').value;
-  const gender = document.getElementById('gender').value;
+  const lastName  = document.getElementById('lastName').value.trim();
+  const dob       = document.getElementById('dob').value;
+  const age       = document.getElementById('age').value;
+  const gender    = document.getElementById('gender').value;
   const bloodType = selectedBlood;
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  const phone = document.getElementById('phone').value.trim();
-  const relPhone = document.getElementById('relativePhone').value.trim();
-  const address = document.getElementById('address').value.trim();
-  const diseases = document.getElementById('diseases').value.trim();
+  const email     = document.getElementById('email').value.trim();
+  const password  = document.getElementById('password').value;
+  const phone     = document.getElementById('phone').value.trim();
+  const relPhone  = document.getElementById('relativePhone').value.trim();
+  const address   = document.getElementById('address').value.trim();
+  const diseases  = document.getElementById('diseases').value.trim();
 
   // Validate
   let valid = true;
   ['firstName','lastName','dob','email','password','phone'].forEach(id => clearErr(id));
-
   if (!firstName) { markErr('firstName'); valid = false; }
-  if (!lastName) { markErr('lastName'); valid = false; }
-  if (!dob) { markErr('dob'); valid = false; }
-  if (!email) { markErr('email'); valid = false; }
+  if (!lastName)  { markErr('lastName');  valid = false; }
+  if (!dob)       { markErr('dob');       valid = false; }
+  if (!email)     { markErr('email');     valid = false; }
   if (!password || password.length < 6) { markErr('password'); valid = false; }
-  if (!phone) { markErr('phone'); valid = false; }
-
+  if (!phone)     { markErr('phone');     valid = false; }
   if (!bloodType) { showToast('Please select a blood type.', 'error'); return; }
-  if (!valid) { showToast('Please fill in all required fields.', 'error'); return; }
+  if (!valid)     { showToast('Please fill in all required fields.', 'error'); return; }
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
-  document.getElementById('submitText').innerHTML = '<div class="spinner"></div> Submitting…';
+  document.getElementById('submitText').innerHTML = '<div class="spinner"></div> Uploading & Submitting…';
 
   try {
     const reqId = 'REQ-' + Date.now().toString(36).toUpperCase();
 
-    // Collect blood tests
+    // ── Count total files to upload for progress ──────────────────────────
+    const allPdfInputs = [
+      ...document.querySelectorAll('.blood-test-pdf'),
+      ...document.querySelectorAll('.radiology-pdf'),
+      ...document.querySelectorAll('.medical-record-pdf')
+    ].filter(i => i.files && i.files[0]);
+
+    let uploadedCount = 0;
+    const totalFiles = allPdfInputs.length;
+
+    if (totalFiles > 0) {
+      showProgress();
+      setProgress(0, `Uploading 0 of ${totalFiles} file(s)…`);
+    }
+
+    // Helper: upload one file and tick the progress bar
+    async function uploadWithProgress(file, path) {
+      const url = await uploadPDF(file, path);
+      uploadedCount++;
+      const pct = Math.round((uploadedCount / totalFiles) * 100);
+      setProgress(pct, `Uploaded ${uploadedCount} of ${totalFiles} file(s)…`);
+      return url;
+    }
+
+    // ── Collect & upload Blood Tests ──────────────────────────────────────
     const bloodTests = [];
     const bloodEntries = document.querySelectorAll('.blood-test-entry');
     for (let i = 0; i < bloodEntries.length; i++) {
-      const entry = bloodEntries[i];
+      const entry    = bloodEntries[i];
       const testName = entry.querySelector('.blood-test-name')?.value.trim();
       const testDate = entry.querySelector('.blood-test-date')?.value;
-      const labName = entry.querySelector('.blood-test-lab')?.value.trim();
-      const result = entry.querySelector('.blood-test-result')?.value.trim();
-      const referenceRange = entry.querySelector('.blood-test-range')?.value.trim();
-      
-      if (testName && testDate) {
-        bloodTests.push({
-          testName: testName,
-          date: testDate,
-          labName: labName || 'Not specified',
-          result: result || 'Pending',
-          referenceRange: referenceRange || '',
-          addedAt: new Date().toISOString(),
-          addedBy: currentHospitalUid
-        });
+      if (!testName || !testDate) continue;
+
+      const pdfFile = entry.querySelector('.blood-test-pdf')?.files[0] || null;
+      let pdfUrl = null, pdfName = null;
+      if (pdfFile) {
+        const path = `patients/${reqId}/blood-tests/${Date.now()}_${pdfFile.name}`;
+        pdfUrl  = await uploadWithProgress(pdfFile, path);
+        pdfName = pdfFile.name;
       }
+
+      bloodTests.push({
+        testName,
+        date:           testDate,
+        labName:        entry.querySelector('.blood-test-lab')?.value.trim()    || 'Not specified',
+        result:         entry.querySelector('.blood-test-result')?.value.trim() || 'Pending',
+        referenceRange: entry.querySelector('.blood-test-range')?.value.trim()  || '',
+        pdfUrl,
+        pdfName,
+        addedAt:  new Date().toISOString(),
+        addedBy:  currentHospitalUid
+      });
     }
-    
-    // Collect radiology reports
+
+    // ── Collect & upload Radiology Reports ───────────────────────────────
     const radiologyReports = [];
     const radiologyEntries = document.querySelectorAll('.radiology-entry');
     for (let i = 0; i < radiologyEntries.length; i++) {
-      const entry = radiologyEntries[i];
+      const entry    = radiologyEntries[i];
       const examType = entry.querySelector('.radiology-type')?.value.trim();
       const examDate = entry.querySelector('.radiology-date')?.value;
-      const centerName = entry.querySelector('.radiology-center')?.value.trim();
-      const finding = entry.querySelector('.radiology-finding')?.value.trim();
-      const technique = entry.querySelector('.radiology-technique')?.value.trim();
-      
-      if (examType && examDate) {
-        radiologyReports.push({
-          examType: examType,
-          date: examDate,
-          centerName: centerName || 'Not specified',
-          finding: finding || 'Pending',
-          technique: technique || '',
-          addedAt: new Date().toISOString(),
-          addedBy: currentHospitalUid
-        });
+      if (!examType || !examDate) continue;
+
+      const pdfFile = entry.querySelector('.radiology-pdf')?.files[0] || null;
+      let pdfUrl = null, pdfName = null;
+      if (pdfFile) {
+        const path = `patients/${reqId}/radiology/${Date.now()}_${pdfFile.name}`;
+        pdfUrl  = await uploadWithProgress(pdfFile, path);
+        pdfName = pdfFile.name;
       }
+
+      radiologyReports.push({
+        examType,
+        date:       examDate,
+        centerName: entry.querySelector('.radiology-center')?.value.trim()  || 'Not specified',
+        finding:    entry.querySelector('.radiology-finding')?.value.trim() || 'Pending',
+        technique:  entry.querySelector('.radiology-technique')?.value.trim() || '',
+        pdfUrl,
+        pdfName,
+        addedAt:  new Date().toISOString(),
+        addedBy:  currentHospitalUid
+      });
     }
-    
-    // Collect medical records
+
+    // ── Collect & upload Medical Records ─────────────────────────────────
     const medicalRecords = [];
     const medicalEntries = document.querySelectorAll('.medical-record-entry');
     for (let i = 0; i < medicalEntries.length; i++) {
-      const entry = medicalEntries[i];
+      const entry      = medicalEntries[i];
       const doctorName = entry.querySelector('.medical-doctor')?.value.trim();
-      const specialty = entry.querySelector('.medical-specialty')?.value.trim();
       const recordDate = entry.querySelector('.medical-date')?.value;
-      const diagnosis = entry.querySelector('.medical-diagnosis')?.value.trim();
-      const notes = entry.querySelector('.medical-notes')?.value.trim();
-      
-      if (doctorName && recordDate) {
-        medicalRecords.push({
-          doctorName: doctorName,
-          specialty: specialty || 'General',
-          date: recordDate,
-          diagnosis: diagnosis || 'Not specified',
-          notes: notes || '',
-          addedAt: new Date().toISOString(),
-          addedBy: currentHospitalUid
-        });
+      if (!doctorName || !recordDate) continue;
+
+      const pdfFile = entry.querySelector('.medical-record-pdf')?.files[0] || null;
+      let pdfUrl = null, pdfName = null;
+      if (pdfFile) {
+        const path = `patients/${reqId}/medical-records/${Date.now()}_${pdfFile.name}`;
+        pdfUrl  = await uploadWithProgress(pdfFile, path);
+        pdfName = pdfFile.name;
       }
+
+      medicalRecords.push({
+        doctorName,
+        specialty:  entry.querySelector('.medical-specialty')?.value.trim() || 'General',
+        date:       recordDate,
+        diagnosis:  entry.querySelector('.medical-diagnosis')?.value.trim() || 'Not specified',
+        notes:      entry.querySelector('.medical-notes')?.value.trim()     || '',
+        pdfUrl,
+        pdfName,
+        addedAt:  new Date().toISOString(),
+        addedBy:  currentHospitalUid
+      });
     }
 
-    // Create patient request document
+    if (totalFiles > 0) {
+      setProgress(100, 'All files uploaded. Saving request…');
+    }
+
+    // ── Save to Firestore ─────────────────────────────────────────────────
     await db.collection('patientRequests').doc(reqId).set({
-      reqId: reqId,
-      status: 'pending',
+      reqId,
+      status:      'pending',
       submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      
-      // Hospital info
-      hospitalUid: currentHospitalUid,
+
+      hospitalUid:  currentHospitalUid,
       hospitalName: currentHospitalName,
-      
-      // Patient basic info
-      firstName: firstName,
-      lastName: lastName,
-      name: `${firstName} ${lastName}`,
-      dob: dob,
-      age: parseInt(age) || null,
-      gender: gender || '',
-      bloodType: bloodType,
-      email: email,
-      password: password,
-      phone: phone,
+
+      firstName,
+      lastName,
+      name:          `${firstName} ${lastName}`,
+      dob,
+      age:           parseInt(age) || null,
+      gender:        gender || '',
+      bloodType,
+      email,
+      password,
+      phone,
       relativePhone: relPhone || '',
-      address: address || '',
+      address:       address  || '',
       chronicDiseases: diseases || 'None',
-      
-      // ALL THREE MEDICAL RECORD TYPES
-      bloodTests: bloodTests,
-      radiologyReports: radiologyReports,
-      medicalRecords: medicalRecords,
-      
-      // Metadata
-      hasBloodTests: bloodTests.length > 0,
+
+      bloodTests,
+      radiologyReports,
+      medicalRecords,
+
+      hasBloodTests:       bloodTests.length > 0,
       hasRadiologyReports: radiologyReports.length > 0,
-      hasMedicalRecords: medicalRecords.length > 0,
+      hasMedicalRecords:   medicalRecords.length > 0,
+
+      // Quick flag: does any record have a PDF?
+      hasPDFFiles: [...bloodTests, ...radiologyReports, ...medicalRecords].some(r => r.pdfUrl),
+
       createdAt: new Date().toISOString()
     });
-    
-    console.log('Patient request submitted:', reqId);
-    console.log('Blood tests saved:', bloodTests.length);
-    console.log('Radiology reports saved:', radiologyReports.length);
-    console.log('Medical records saved:', medicalRecords.length);
+
+    hideProgress();
 
     // Show success
     document.getElementById('formCard').style.display = 'none';
     document.getElementById('successBanner').classList.add('visible');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    showToast(`Registration request submitted with ${bloodTests.length} blood tests, ${radiologyReports.length} radiology reports, and ${medicalRecords.length} medical records!`, 'success');
+
+    const pdfCount = [...bloodTests, ...radiologyReports, ...medicalRecords].filter(r => r.pdfUrl).length;
+    showToast(
+      `Registration submitted! ${bloodTests.length} blood tests, ${radiologyReports.length} radiology reports, ${medicalRecords.length} medical records` +
+      (pdfCount > 0 ? ` (${pdfCount} PDF${pdfCount > 1 ? 's' : ''} uploaded)` : '') + '.',
+      'success'
+    );
 
   } catch(err) {
     console.error('Submission error:', err);
+    hideProgress();
     btn.disabled = false;
     document.getElementById('submitText').textContent = 'Submit Registration Request';
     showToast('Error: ' + (err.message || err.code), 'error');
