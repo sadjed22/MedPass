@@ -61,8 +61,9 @@ body{font-family:'Inter',sans-serif;color:var(--text);background:var(--white);fo
 .nav-links a:hover{color:var(--text);}
 .nav-right{display:flex;align-items:center;gap:20px;}
 .lang-options{display:flex;gap:12px;font-size:13px;color:var(--muted);}
-.lang-options span{cursor:pointer;}
+.lang-options span{cursor:pointer;transition:color .2s;padding:4px 8px;border-radius:4px;}
 .lang-options span:hover{color:var(--text);}
+.lang-options span.active{color:var(--green);font-weight:600;}
 .btn-login{background:var(--green);color:#fff;padding:7px 18px;border-radius:20px;font-size:13px;font-weight:600;text-decoration:none;transition:background .2s;}
 .btn-login:hover{background:var(--green-dark);}
 /* ── HERO ── */
@@ -465,22 +466,22 @@ footer{
     MedPass
   </a>
   <ul class="nav-links">
-    <li><a href="#">Home</a></li>
-    <li><a href="#news">Blog & Projects</a></li>
-    <li><a href="#about">About Us</a></li>
+    <li><a href="#" data-i18n="nav-home">Home</a></li>
+    <li><a href="#news" data-i18n="nav-blog">Blog & Projects</a></li>
+    <li><a href="#about" data-i18n="nav-about">About Us</a></li>
   </ul>
   <div class="nav-right">
     <div class="lang-options">
-      <span>EN</span><span>FR</span><span>AR</span>
+      <span class="lang-btn active" data-lang="en">EN</span><span class="lang-btn" data-lang="fr">FR</span><span class="lang-btn" data-lang="ar">AR</span>
     </div>
-    <a href="login_page.html" class="btn-login">Login</a>
+    <a href="login_page.html" class="btn-login" data-i18n="btn-login">Login</a>
   </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <h1>MedPass</h1>
-  <p class="hero-sub">Access medical records instantly with one tap</p>
+  <h1 data-i18n="hero-title">MedPass</h1>
+  <p class="hero-sub" data-i18n="hero-sub">Access medical records instantly with one tap</p>
 
   <!-- 3D Card -->
   <div class="card-scene" id="cardScene">
@@ -493,19 +494,19 @@ footer{
             <div class="card-fields">
               <div class="card-field">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <span>Full name: &nbsp;<b>xxxxxxxxxx</b></span>
+                <span><span data-i18n="card-name">Full name: </span>&nbsp;<b>xxxxxxxxxx</b></span>
               </div>
               <div class="card-field">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                <span>Date of birth: &nbsp;<b>xx/xx/xx</b></span>
+                <span><span data-i18n="card-dob">Date of birth: </span>&nbsp;<b>xx/xx/xx</b></span>
               </div>
               <div class="card-field">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
-                <span>ID: &nbsp;<b>xxxxxxxxxxxxxxx</b></span>
+                <span><span data-i18n="card-id">ID: </span>&nbsp;<b>xxxxxxxxxxxxxxx</b></span>
               </div>
               <div class="card-field">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                <span>Blood type: &nbsp;<b>XXXX</b></span>
+                <span><span data-i18n="card-blood">Blood type: </span>&nbsp;<b>XXXX</b></span>
               </div>
             </div>
           </div>
@@ -531,39 +532,39 @@ footer{
     </div>
   </div>
 
-  <p class="card-scan-label">Scan your card for quick access</p>
+  <p class="card-scan-label" data-i18n="card-scan-label">Scan your card for quick access</p>
 
   <div class="hero-btns-row">
     <a href="patient_info.html" class="btn-green">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke-dasharray="3 2"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
-      Scan NFC →
+      <span data-i18n="btn-scan-nfc">Scan NFC →</span>
     </a>
     <button class="btn-green" style="background:#6366F1;" onclick="openQRScanner()">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-      Scan QR Code →
-    </a>
+      <span data-i18n="btn-scan-qr">Scan QR Code →</span>
+    </button>
   </div>
   <div class="hero-btns-row2" style="margin-top:10px;">
     <a href="service_activation.html" class="btn-outline-hero">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
-      Service Activation →
+      <span data-i18n="btn-service">Service Activation →</span>
     </a>
     <a href="tech_support1.html" class="btn-outline-orange">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-      Request Support →
+      <span data-i18n="btn-support">Request Support →</span>
     </a>
   </div>
   <!-- QR SCANNER MODAL -->
 <div class="modal-overlay" id="qrModal">
   <div class="modal-content">
     <div class="modal-header">
-      <h3>🔍 Scan QR Code</h3>
+      <h3>🔍 <span data-i18n="modal-scan">Scan QR Code</span></h3>
       <button class="modal-close" onclick="closeQRModal()">✕</button>
     </div>
     <video id="video" autoplay playsinline></video>
     <div class="scan-buttons">
-      <button class="btn-cam" onclick="startCamera()">📷 Start Camera</button>
-      <button class="btn-upload" onclick="document.getElementById('fileInput').click()">📁 Upload QR Image</button>
+      <button class="btn-cam" onclick="startCamera()"><span data-i18n="btn-camera">📷 Start Camera</span></button>
+      <button class="btn-upload" onclick="document.getElementById('fileInput').click()"><span data-i18n="btn-file">📁 Upload QR Image</span></button>
     </div>
     <input type="file" id="fileInput" accept="image/*" onchange="uploadQRImage(this)">
     <div id="scanResult" class="scan-result"></div>
@@ -578,19 +579,19 @@ footer{
       <div class="nav-icon-circle">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </div>
-      <span class="nav-icon-label">Home</span>
+      <span class="nav-icon-label" data-i18n="nav-home-icon">Home</span>
     </a>
     <a href="#news" class="nav-icon-item">
       <div class="nav-icon-circle">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       </div>
-      <span class="nav-icon-label">Blog & Projects</span>
+      <span class="nav-icon-label" data-i18n="nav-blog-icon">Blog & Projects</span>
     </a>
     <a href="#about" class="nav-icon-item">
       <div class="nav-icon-circle">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
       </div>
-      <span class="nav-icon-label">About Us</span>
+      <span class="nav-icon-label" data-i18n="nav-about-icon">About Us</span>
     </a>
   </div>
 </div>
@@ -598,29 +599,29 @@ footer{
 <!-- WHY CHOOSE -->
 <div style="padding:70px 5%;">
   <div style="max-width:1100px;margin:0 auto;">
-    <h2 class="section-title">Why Choose MedPass?</h2>
-    <p class="section-sub">The future of healthcare access is here</p>
+    <h2 class="section-title" data-i18n="section-why">Why Choose MedPass?</h2>
+    <p class="section-sub" data-i18n="section-why-sub">The future of healthcare access is here</p>
     <div class="features-3">
       <div class="feat-box">
         <div class="feat-icon-sq" style="background:#FFF7ED;">
           <svg viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
-        <div class="feat-box-title">Instant Access</div>
-        <div class="feat-box-desc">Access medical records instantly with a simple tap of your NFC card. No waiting, no paperwork.</div>
+        <div class="feat-box-title" data-i18n="feat1-title">Instant Access</div>
+        <div class="feat-box-desc" data-i18n="feat1-desc">Access medical records instantly with a simple tap of your NFC card. No waiting, no paperwork.</div>
       </div>
       <div class="feat-box">
         <div class="feat-icon-sq" style="background:#F0FDF4;">
           <svg viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
-        <div class="feat-box-title">Secure & Private</div>
-        <div class="feat-box-desc">Bank-level encryption ensures your medical data stays protected. Your privacy is our priority.</div>
+        <div class="feat-box-title" data-i18n="feat2-title">Secure & Private</div>
+        <div class="feat-box-desc" data-i18n="feat2-desc">Bank-level encryption ensures your medical data stays protected. Your privacy is our priority.</div>
       </div>
       <div class="feat-box">
         <div class="feat-icon-sq" style="background:#F5F3FF;">
           <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
-        <div class="feat-box-title">Multi-Role Platform</div>
-        <div class="feat-box-desc">Seamless integration between hospitals, doctors, labs, and pharmacies for coordinated care.</div>
+        <div class="feat-box-title" data-i18n="feat3-title">Multi-Role Platform</div>
+        <div class="feat-box-desc" data-i18n="feat3-desc">Seamless integration between hospitals, doctors, labs, and pharmacies for coordinated care.</div>
       </div>
     </div>
   </div>
@@ -629,8 +630,8 @@ footer{
 <!-- NEWS & PROJECTS -->
 <div class="news-section" id="news">
   <div class="news-inner">
-    <h2 class="section-title">Latest News & Projects</h2>
-    <p class="section-sub">Stay informed with our latest news and developments</p>
+    <h2 class="section-title" data-i18n="section-news">Latest News & Projects</h2>
+    <p class="section-sub" data-i18n="section-news-sub">Stay informed with our latest news and developments</p>
 
     <div class="news-cards">
       <div class="news-card">
@@ -638,10 +639,10 @@ footer{
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 8-8h0a8 8 0 0 1 8 8v1"/><path d="M9 14l1.5 7M15 14l-1.5 7"/></svg>
         </div>
         <div class="news-card-body">
-          <span class="news-badge badge-green">Announcement</span>
-          <span class="news-date">March 11, 2026</span>
-          <div class="news-card-title">MedPass Platform Launch</div>
-          <div class="news-card-desc">We're excited to announce the official launch of MedPass, revolutionizing healthcare access with NFC technology.</div>
+          <span class="news-badge badge-green" data-i18n="news-badge1">Announcement</span>
+          <span class="news-date" data-i18n="news-date1">March 11, 2026</span>
+          <div class="news-card-title" data-i18n="news-title1">MedPass Platform Launch</div>
+          <div class="news-card-desc" data-i18n="news-desc1">We're excited to announce the official launch of MedPass, revolutionizing healthcare access with NFC technology.</div>
         </div>
       </div>
       <div class="news-card">
@@ -649,10 +650,10 @@ footer{
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
         <div class="news-card-body">
-          <span class="news-badge badge-blue">Partnership</span>
-          <span class="news-date">March 20, 2026</span>
-          <div class="news-card-title">Partnership with Major Hospitals</div>
-          <div class="news-card-desc">MedPass now integrated with 50+ hospitals across the country, expanding our network for better care.</div>
+          <span class="news-badge badge-blue" data-i18n="news-badge2">Partnership</span>
+          <span class="news-date" data-i18n="news-date2">March 20, 2026</span>
+          <div class="news-card-title" data-i18n="news-title2">Partnership with Major Hospitals</div>
+          <div class="news-card-desc" data-i18n="news-desc2">MedPass now integrated with 50+ hospitals across the country, expanding our network for better care.</div>
         </div>
       </div>
       <div class="news-card">
@@ -660,10 +661,10 @@ footer{
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
         </div>
         <div class="news-card-body">
-          <span class="news-badge badge-purple">Update</span>
-          <span class="news-date">March 30, 2026</span>
-          <div class="news-card-title">New Feature: Lab Results</div>
-          <div class="news-card-desc">Patients can now access lab results instantly through the platform. Download and share with ease.</div>
+          <span class="news-badge badge-purple" data-i18n="news-badge3">Update</span>
+          <span class="news-date" data-i18n="news-date3">March 30, 2026</span>
+          <div class="news-card-title" data-i18n="news-title3">New Feature: Lab Results</div>
+          <div class="news-card-desc" data-i18n="news-desc3">Patients can now access lab results instantly through the platform. Download and share with ease.</div>
         </div>
       </div>
     </div>
@@ -671,22 +672,22 @@ footer{
     <div class="projects-row">
       <div class="project-card">
         <div class="project-header">
-          <div class="project-title">Telemedicine Integration</div>
-          <span class="news-badge badge-teal">In Development</span>
+          <div class="project-title" data-i18n="project1-title">Telemedicine Integration</div>
+          <span class="news-badge badge-teal" data-i18n="project1-badge">In Development</span>
         </div>
-        <div class="project-desc">Video consultations and remote monitoring coming soon to enhance patient care accessibility.</div>
-        <div class="progress-label"><span>Progress</span><span>65%</span></div>
+        <div class="project-desc" data-i18n="project1-desc">Video consultations and remote monitoring coming soon to enhance patient care accessibility.</div>
+        <div class="progress-label"><span data-i18n="project1-progress">Progress</span><span>65%</span></div>
         <div class="progress-bar-bg">
           <div class="progress-bar-fill" style="width:65%;background:linear-gradient(90deg,#2DC98E,#3B82F6);"></div>
         </div>
       </div>
       <div class="project-card">
         <div class="project-header">
-          <div class="project-title">AI Health Assistant</div>
-          <span class="news-badge badge-pink">Planning</span>
+          <div class="project-title" data-i18n="project2-title">AI Health Assistant</div>
+          <span class="news-badge badge-pink" data-i18n="project2-badge">Planning</span>
         </div>
-        <div class="project-desc">Smart health recommendations and appointment scheduling powered by artificial intelligence.</div>
-        <div class="progress-label"><span>Progress</span><span>20%</span></div>
+        <div class="project-desc" data-i18n="project2-desc">Smart health recommendations and appointment scheduling powered by artificial intelligence.</div>
+        <div class="progress-label"><span data-i18n="project2-progress">Progress</span><span>20%</span></div>
         <div class="progress-bar-bg">
           <div class="progress-bar-fill" style="width:20%;background:linear-gradient(90deg,#EC4899,#8B5CF6);"></div>
         </div>
@@ -698,16 +699,16 @@ footer{
 <!-- ABOUT -->
 <div class="about-section" id="about">
   <div class="about-inner">
-    <h2 class="section-title">About MedPass</h2>
-    <p class="section-sub" style="max-width:580px;margin:0 auto 32px;">MedPass is revolutionizing healthcare access through innovative NFC technology. We connect patients, hospitals, doctors, labs, and pharmacies in one secure platform.</p>
+    <h2 class="section-title" data-i18n="section-about">About MedPass</h2>
+    <p class="section-sub" data-i18n="about-intro" style="max-width:580px;margin:0 auto 32px;">MedPass is revolutionizing healthcare access through innovative NFC technology. We connect patients, hospitals, doctors, labs, and pharmacies in one secure platform.</p>
     <div class="about-cols">
       <div class="about-col">
-        <div class="about-col-title">Our Mission</div>
-        <div class="about-col-desc">To democratize healthcare access by providing instant, secure, and seamless medical record management through innovative NFC technology.</div>
+        <div class="about-col-title" data-i18n="about-mission-title">Our Mission</div>
+        <div class="about-col-desc" data-i18n="about-mission">To democratize healthcare access by providing instant, secure, and seamless medical record management through innovative NFC technology.</div>
       </div>
       <div class="about-col">
-        <div class="about-col-title">Our Vision</div>
-        <div class="about-col-desc">A world where every patient has complete control over their medical information, accessible anytime, anywhere, with a simple tap.</div>
+        <div class="about-col-title" data-i18n="about-vision-title">Our Vision</div>
+        <div class="about-col-desc" data-i18n="about-vision">A world where every patient has complete control over their medical information, accessible anytime, anywhere, with a simple tap.</div>
       </div>
     </div>
     <div class="stats-4">
@@ -715,29 +716,29 @@ footer{
         <div class="stat-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
         </div>
-        <div class="stat-num">50+</div>
-        <div class="stat-label">Partner Hospitals</div>
+        <div class="stat-num" data-i18n="stat1-num">50+</div>
+        <div class="stat-label" data-i18n="stat1-label">Partner Hospitals</div>
       </div>
       <div class="stat-box">
         <div class="stat-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </div>
-        <div class="stat-num">500+</div>
-        <div class="stat-label">Doctors</div>
+        <div class="stat-num" data-i18n="stat2-num">500+</div>
+        <div class="stat-label" data-i18n="stat2-label">Doctors</div>
       </div>
       <div class="stat-box">
         <div class="stat-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>
         </div>
-        <div class="stat-num">10,000+</div>
-        <div class="stat-label">Active Patients</div>
+        <div class="stat-num" data-i18n="stat3-num">10,000+</div>
+        <div class="stat-label" data-i18n="stat3-label">Active Patients</div>
       </div>
       <div class="stat-box">
         <div class="stat-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
-        <div class="stat-num">99.9%</div>
-        <div class="stat-label">Uptime</div>
+        <div class="stat-num" data-i18n="stat4-num">99.9%</div>
+        <div class="stat-label" data-i18n="stat4-label">Uptime</div>
       </div>
     </div>
   </div>
@@ -750,9 +751,9 @@ footer{
       <div class="login-cta-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
       </div>
-      <h3>Already have an account?</h3>
-      <p>Access your medical records using your credentials</p>
-      <a href="login_page.html" class="btn-login-cta">
+      <h3 data-i18n="login-cta-title">Already have an account?</h3>
+      <p data-i18n="login-cta-sub">Access your medical records using your credentials</p>
+      <a href="login_page.html" class="btn-login-cta" data-i18n="btn-login-cta">
         Login with Email & Password →
       </a>
     </div>
@@ -770,35 +771,35 @@ footer{
           </div>
           <span class="footer-brand-name">MedPass</span>
         </div>
-        <p class="footer-about">Revolutionary digital health platform for instant medical record access through NFC technology.</p>
+        <p class="footer-about" data-i18n="footer-about">Revolutionary digital health platform for instant medical record access through NFC technology.</p>
       </div>
       <div class="footer-col">
-        <h4>Quick Links</h4>
+        <h4 data-i18n="footer-quick">Quick Links</h4>
         <ul>
-          <li><a href="#">Home</a></li>
-          <li><a href="#">Blog & Projects</a></li>
-          <li><a href="#">About Us</a></li>
-          <li><a href="#">Login</a></li>
-          <li><a href="#">Activate Service</a></li>
+          <li><a href="#" data-i18n="nav-home">Home</a></li>
+          <li><a href="#" data-i18n="nav-blog">Blog & Projects</a></li>
+          <li><a href="#" data-i18n="nav-about">About Us</a></li>
+          <li><a href="#" data-i18n="btn-login">Login</a></li>
+          <li><a href="#" data-i18n="btn-service">Activate Service</a></li>
         </ul>
       </div>
       <div class="footer-col">
-        <h4>Contact Us</h4>
+        <h4 data-i18n="footer-contact">Contact Us</h4>
         <div class="contact-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          support@medpass.com
+          <span data-i18n="footer-email">support@medpass.com</span>
         </div>
         <div class="contact-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.38 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          +1 (555) 123-4567
+          <span data-i18n="footer-phone">+1 (555) 123-4567</span>
         </div>
         <div class="contact-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          123 Medical Plaza, Healthcare City, HC 12345
+          <span data-i18n="footer-address">123 Medical Plaza, Healthcare City, HC 12345</span>
         </div>
       </div>
       <div class="footer-col">
-        <h4>Follow Us</h4>
+        <h4 data-i18n="footer-follow">Follow Us</h4>
         <div class="social-row">
           <div class="social-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
@@ -813,7 +814,7 @@ footer{
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
           </div>
         </div>
-        <h4 style="margin-top:4px;">Newsletter</h4>
+        <h4 style="margin-top:4px;" data-i18n="footer-newsletter">Newsletter</h4>
         <div class="newsletter-input-row">
           <input type="email" class="newsletter-input" placeholder="Your email"/>
           <button class="newsletter-btn">
@@ -823,11 +824,11 @@ footer{
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 MedPass. All rights reserved.</span>
+      <span data-i18n="footer-copyright">© 2026 MedPass. All rights reserved.</span>
       <div class="footer-legal">
-        <a href="#">Privacy Policy</a>
-        <a href="#">Terms of Service</a>
-        <a href="#">Cookie Policy</a>
+        <a href="#" data-i18n="footer-privacy">Privacy Policy</a>
+        <a href="#" data-i18n="footer-terms">Terms of Service</a>
+        <a href="#" data-i18n="footer-cookies">Cookie Policy</a>
       </div>
     </div>
   </div>
@@ -1056,6 +1057,304 @@ async function processQRData(qrText) {
 const script = document.createElement('script');
 script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
 document.head.appendChild(script);
+
+// ── LANGUAGE SWITCHER ──
+const translations = {
+  en: {
+    'nav-home': 'Home',
+    'nav-blog': 'Blog & Projects',
+    'nav-about': 'About Us',
+    'btn-login': 'Login',
+    'hero-title': 'MedPass',
+    'hero-sub': 'Access medical records instantly with one tap',
+    'card-scan-label': 'Scan your card for quick access',
+    'btn-scan-nfc': 'Scan NFC →',
+    'btn-scan-qr': 'Scan QR Code →',
+    'btn-service': 'Service Activation →',
+    'btn-support': 'Request Support →',
+    'nav-home-icon': 'Home',
+    'nav-blog-icon': 'Blog & Projects',
+    'nav-about-icon': 'About Us',
+    'section-why': 'Why Choose MedPass?',
+    'section-why-sub': 'The future of healthcare access is here',
+    'feat1-title': 'Instant Access',
+    'feat1-desc': 'Access medical records instantly with a simple tap of your NFC card. No waiting, no paperwork.',
+    'feat2-title': 'Secure & Private',
+    'feat2-desc': 'Bank-level encryption ensures your medical data stays protected. Your privacy is our priority.',
+    'feat3-title': 'Multi-Role Platform',
+    'feat3-desc': 'Seamless integration between hospitals, doctors, labs, and pharmacies for coordinated care.',
+    'section-news': 'Latest News & Projects',
+    'section-news-sub': 'Stay informed with our latest news and developments',
+    'news-badge1': 'Announcement',
+    'news-date1': 'March 11, 2026',
+    'news-title1': 'MedPass Platform Launch',
+    'news-desc1': 'We\'re excited to announce the official launch of MedPass, revolutionizing healthcare access with NFC technology.',
+    'news-badge2': 'Partnership',
+    'news-date2': 'March 20, 2026',
+    'news-title2': 'Partnership with Major Hospitals',
+    'news-desc2': 'MedPass now integrated with 50+ hospitals across the country, expanding our network for better care.',
+    'news-badge3': 'Update',
+    'news-date3': 'March 30, 2026',
+    'news-title3': 'New Feature: Lab Results',
+    'news-desc3': 'Patients can now access lab results instantly through the platform. Download and share with ease.',
+    'project1-title': 'Telemedicine Integration',
+    'project1-badge': 'In Development',
+    'project1-desc': 'Video consultations and remote monitoring coming soon to enhance patient care accessibility.',
+    'project1-progress': 'Progress',
+    'project2-title': 'AI Health Assistant',
+    'project2-badge': 'Planning',
+    'project2-desc': 'Smart health recommendations and appointment scheduling powered by artificial intelligence.',
+    'project2-progress': 'Progress',
+    'section-about': 'About MedPass',
+    'about-intro': 'MedPass is revolutionizing healthcare access through innovative NFC technology. We connect patients, hospitals, doctors, labs, and pharmacies in one secure platform.',
+    'about-mission-title': 'Our Mission',
+    'about-mission': 'To democratize healthcare access by providing instant, secure, and seamless medical record management through innovative NFC technology.',
+    'about-vision-title': 'Our Vision',
+    'about-vision': 'A world where every patient has complete control over their medical information, accessible anytime, anywhere, with a simple tap.',
+    'stat1-num': '50+',
+    'stat1-label': 'Partner Hospitals',
+    'stat2-num': '500+',
+    'stat2-label': 'Doctors',
+    'stat3-num': '10,000+',
+    'stat3-label': 'Active Patients',
+    'stat4-num': '99.9%',
+    'stat4-label': 'Uptime',
+    'login-cta-title': 'Already have an account?',
+    'login-cta-sub': 'Access your medical records using your credentials',
+    'btn-login-cta': 'Login with Email & Password →',
+    'footer-about': 'Revolutionary digital health platform for instant medical record access through NFC technology.',
+    'footer-quick': 'Quick Links',
+    'footer-contact': 'Contact Us',
+    'footer-follow': 'Follow Us',
+    'footer-email': 'support@medpass.com',
+    'footer-phone': '+1 (555) 123-4567',
+    'footer-address': '123 Medical Plaza, Healthcare City, HC 12345',
+    'footer-newsletter': 'Newsletter',
+    'footer-copyright': '© 2026 MedPass. All rights reserved.',
+    'footer-privacy': 'Privacy Policy',
+    'footer-terms': 'Terms of Service',
+    'footer-cookies': 'Cookie Policy',
+    'card-name': 'Full name: ',
+    'card-dob': 'Date of birth: ',
+    'card-id': 'ID: ',
+    'card-blood': 'Blood type: ',
+    'modal-scan': 'Scan QR Code',
+    'btn-camera': '📷 Start Camera',
+    'btn-file': '📁 Upload QR Image',
+  },
+  fr: {
+    'nav-home': 'Accueil',
+    'nav-blog': 'Blog & Projets',
+    'nav-about': 'À propos',
+    'btn-login': 'Connexion',
+    'hero-title': 'MedPass',
+    'hero-sub': 'Accédez instantanément à vos dossiers médicaux en un clic',
+    'card-scan-label': 'Scannez votre carte pour un accès rapide',
+    'btn-scan-nfc': 'Scanner NFC →',
+    'btn-scan-qr': 'Scanner Code QR →',
+    'btn-service': 'Activation de Service →',
+    'btn-support': 'Demander du Support →',
+    'nav-home-icon': 'Accueil',
+    'nav-blog-icon': 'Blog & Projets',
+    'nav-about-icon': 'À propos',
+    'section-why': 'Pourquoi Choisir MedPass?',
+    'section-why-sub': 'L\'avenir de l\'accès aux soins est ici',
+    'feat1-title': 'Accès Instantané',
+    'feat1-desc': 'Accédez instantanément à vos dossiers médicaux en touchant simplement votre carte NFC. Pas d\'attente, pas de paperasse.',
+    'feat2-title': 'Sécurisé & Privé',
+    'feat2-desc': 'Le chiffrement de niveau bancaire garantit que vos données médicales restent protégées. Votre confidentialité est notre priorité.',
+    'feat3-title': 'Plateforme Multi-Rôles',
+    'feat3-desc': 'Intégration transparente entre les hôpitaux, médecins, laboratoires et pharmacies pour des soins coordonnés.',
+    'section-news': 'Dernières Actualités & Projets',
+    'section-news-sub': 'Restez informé de nos dernières actualités et développements',
+    'news-badge1': 'Annonce',
+    'news-date1': '11 mars 2026',
+    'news-title1': 'Lancement de la Plateforme MedPass',
+    'news-desc1': 'Nous sommes heureux d\'annoncer le lancement officiel de MedPass, révolutionnant l\'accès aux soins avec la technologie NFC.',
+    'news-badge2': 'Partenariat',
+    'news-date2': '20 mars 2026',
+    'news-title2': 'Partenariat avec les Grands Hôpitaux',
+    'news-desc2': 'MedPass est maintenant intégré dans 50+ hôpitaux à travers le pays, élargissant notre réseau pour de meilleurs soins.',
+    'news-badge3': 'Mise à jour',
+    'news-date3': '30 mars 2026',
+    'news-title3': 'Nouvelle Fonctionnalité: Résultats de Laboratoire',
+    'news-desc3': 'Les patients peuvent maintenant accéder instantanément aux résultats de laboratoire via la plateforme. Téléchargez et partagez facilement.',
+    'project1-title': 'Intégration de la Télémédecine',
+    'project1-badge': 'En Développement',
+    'project1-desc': 'Les consultations vidéo et la surveillance à distance arrivent bientôt pour améliorer l\'accessibilité des soins.',
+    'project1-progress': 'Progression',
+    'project2-title': 'Assistant de Santé IA',
+    'project2-badge': 'En Planification',
+    'project2-desc': 'Recommandations de santé intelligentes et planification de rendez-vous alimentées par l\'intelligence artificielle.',
+    'project2-progress': 'Progression',
+    'section-about': 'À Propos de MedPass',
+    'about-intro': 'MedPass révolutionne l\'accès aux soins grâce à la technologie NFC innovante. Nous connectons les patients, les hôpitaux, les médecins, les laboratoires et les pharmacies sur une seule plateforme sécurisée.',
+    'about-mission-title': 'Notre Mission',
+    'about-mission': 'Démocratiser l\'accès aux soins en fournissant une gestion des dossiers médicaux instantanée, sécurisée et transparente grâce à la technologie NFC innovante.',
+    'about-vision-title': 'Notre Vision',
+    'about-vision': 'Un monde où chaque patient a le contrôle total de ses informations médicales, accessibles n\'importe quand, n\'importe où, en un simple clic.',
+    'stat1-num': '50+',
+    'stat1-label': 'Hôpitaux Partenaires',
+    'stat2-num': '500+',
+    'stat2-label': 'Médecins',
+    'stat3-num': '10 000+',
+    'stat3-label': 'Patients Actifs',
+    'stat4-num': '99,9%',
+    'stat4-label': 'Disponibilité',
+    'login-cta-title': 'Vous avez déjà un compte?',
+    'login-cta-sub': 'Accédez à vos dossiers médicaux avec vos identifiants',
+    'btn-login-cta': 'Se Connecter avec Email & Mot de Passe →',
+    'footer-about': 'Plateforme de santé numérique révolutionnaire pour un accès instantané aux dossiers médicaux via la technologie NFC.',
+    'footer-quick': 'Liens Rapides',
+    'footer-contact': 'Nous Contacter',
+    'footer-follow': 'Suivez-Nous',
+    'footer-email': 'support@medpass.com',
+    'footer-phone': '+1 (555) 123-4567',
+    'footer-address': '123 Medical Plaza, Healthcare City, HC 12345',
+    'footer-newsletter': 'Infolettre',
+    'footer-copyright': '© 2026 MedPass. Tous droits réservés.',
+    'footer-privacy': 'Politique de Confidentialité',
+    'footer-terms': 'Conditions de Service',
+    'footer-cookies': 'Politique de Cookies',
+    'card-name': 'Nom complet: ',
+    'card-dob': 'Date de naissance: ',
+    'card-id': 'ID: ',
+    'card-blood': 'Groupe sanguin: ',
+    'modal-scan': 'Scanner Code QR',
+    'btn-camera': '📷 Démarrer l\'appareil photo',
+    'btn-file': '📁 Télécharger l\'image QR',
+  },
+  ar: {
+    'nav-home': 'الرئيسية',
+    'nav-blog': 'المدونة والمشاريع',
+    'nav-about': 'معلومات عنا',
+    'btn-login': 'تسجيل الدخول',
+    'hero-title': 'ميدباس',
+    'hero-sub': 'الوصول الفوري إلى السجلات الطبية برقة واحدة',
+    'card-scan-label': 'امسح بطاقتك للوصول السريع',
+    'btn-scan-nfc': 'امسح NFC →',
+    'btn-scan-qr': 'امسح رمز QR →',
+    'btn-service': 'تفعيل الخدمة →',
+    'btn-support': 'طلب الدعم →',
+    'nav-home-icon': 'الرئيسية',
+    'nav-blog-icon': 'المدونة والمشاريع',
+    'nav-about-icon': 'معلومات عنا',
+    'section-why': 'لماذا تختار ميدباس؟',
+    'section-why-sub': 'مستقبل الوصول إلى الرعاية الصحية هنا',
+    'feat1-title': 'الوصول الفوري',
+    'feat1-desc': 'الوصول الفوري إلى السجلات الطبية برقة واحدة على بطاقتك NFC. لا انتظار، لا أوراق.',
+    'feat2-title': 'آمن وخاص',
+    'feat2-desc': 'التشفير على مستوى البنك يضمن حماية بيانات صحتك. خصوصيتك هي أولويتنا.',
+    'feat3-title': 'منصة متعددة الأدوار',
+    'feat3-desc': 'التكامل السلس بين المستشفيات والأطباء والمختبرات والصيدليات للرعاية المنسقة.',
+    'section-news': 'آخر الأخبار والمشاريع',
+    'section-news-sub': 'ابق على اطلاع على أحدث أخبارنا والتطورات',
+    'news-badge1': 'إعلان',
+    'news-date1': '11 مارس 2026',
+    'news-title1': 'إطلاق منصة ميدباس',
+    'news-desc1': 'يسعدنا الإعلان عن الإطلاق الرسمي لـ ميدباس، وتحويل الوصول إلى الرعاية الصحية بتقنية NFC.',
+    'news-badge2': 'شراكة',
+    'news-date2': '20 مارس 2026',
+    'news-title2': 'شراكة مع المستشفيات الكبرى',
+    'news-desc2': 'ميدباس مدمج الآن مع أكثر من 50+ مستشفى في جميع أنحاء البلاد، مما يوسع شبكتنا لرعاية أفضل.',
+    'news-badge3': 'تحديث',
+    'news-date3': '30 مارس 2026',
+    'news-title3': 'ميزة جديدة: نتائج المختبر',
+    'news-desc3': 'يمكن للمرضى الآن الوصول الفوري إلى نتائج المختبر من خلال المنصة. قم بتحميل ومشاركة بسهولة.',
+    'project1-title': 'تكامل الطب عن بعد',
+    'project1-badge': 'في مرحلة التطوير',
+    'project1-desc': 'الاستشارات الفيديوية والمراقبة عن بعد قريبا لتحسين إمكانية الوصول إلى الرعاية.',
+    'project1-progress': 'التقدم',
+    'project2-title': 'مساعد الصحة الذكي',
+    'project2-badge': 'في مرحلة التخطيط',
+    'project2-desc': 'توصيات الصحة الذكية وجدولة المواعيد المدعومة بالذكاء الاصطناعي.',
+    'project2-progress': 'التقدم',
+    'section-about': 'عن ميدباس',
+    'about-intro': 'ميدباس تحول الوصول إلى الرعاية الصحية من خلال تقنية NFC المبتكرة. نحن نربط المرضى والمستشفيات والأطباء والمختبرات والصيدليات على منصة واحدة آمنة.',
+    'about-mission-title': 'مهمتنا',
+    'about-mission': 'ديمقراطية الوصول إلى الرعاية الصحية من خلال توفير إدارة السجلات الطبية الفورية والآمنة والسلسة من خلال تقنية NFC المبتكرة.',
+    'about-vision-title': 'رؤيتنا',
+    'about-vision': 'عالم حيث يتمتع كل مريض بالسيطرة الكاملة على معلوماته الطبية، ويمكن الوصول إليها في أي وقت وفي أي مكان، برقة واحدة.',
+    'stat1-num': '50+',
+    'stat1-label': 'مستشفيات شريكة',
+    'stat2-num': '500+',
+    'stat2-label': 'أطباء',
+    'stat3-num': '10000+',
+    'stat3-label': 'مرضى نشطاء',
+    'stat4-num': '99.9%',
+    'stat4-label': 'وقت التشغيل',
+    'login-cta-title': 'هل لديك حساب بالفعل؟',
+    'login-cta-sub': 'الوصول إلى سجلاتك الطبية باستخدام بيانات اعتمادك',
+    'btn-login-cta': 'تسجيل الدخول عبر البريد الإلكتروني وكلمة المرور →',
+    'footer-about': 'منصة صحة رقمية ثورية للوصول الفوري إلى السجلات الطبية من خلال تقنية NFC.',
+    'footer-quick': 'روابط سريعة',
+    'footer-contact': 'اتصل بنا',
+    'footer-follow': 'تابعنا',
+    'footer-email': 'support@medpass.com',
+    'footer-phone': '+1 (555) 123-4567',
+    'footer-address': '123 Medical Plaza, Healthcare City, HC 12345',
+    'footer-newsletter': 'النشرة الإخبارية',
+    'footer-copyright': '© 2026 ميدباس. جميع الحقوق محفوظة.',
+    'footer-privacy': 'سياسة الخصوصية',
+    'footer-terms': 'شروط الخدمة',
+    'footer-cookies': 'سياسة ملفات تعريف الارتباط',
+    'card-name': 'الاسم الكامل: ',
+    'card-dob': 'تاريخ الميلاد: ',
+    'card-id': 'الهوية: ',
+    'card-blood': 'فصيلة الدم: ',
+    'modal-scan': 'امسح رمز QR',
+    'btn-camera': '📷 ابدأ الكاميرا',
+    'btn-file': '📁 تحميل صورة QR',
+  }
+};
+
+function changeLanguage(lang) {
+  localStorage.setItem('selectedLanguage', lang);
+  
+  // Update button styling
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
+  
+  // Update text content
+  const langData = translations[lang];
+  
+  document.querySelectorAll('[data-i18n]').forEach(element => {
+    const key = element.getAttribute('data-i18n');
+    if (langData[key]) {
+      if (element.tagName === 'INPUT' && element.type === 'text') {
+        element.placeholder = langData[key];
+      } else {
+        element.textContent = langData[key];
+      }
+    }
+  });
+  
+  // Set page direction for Arabic
+  if (lang === 'ar') {
+    document.documentElement.dir = 'rtl';
+    document.body.style.direction = 'rtl';
+  } else {
+    document.documentElement.dir = 'ltr';
+    document.body.style.direction = 'ltr';
+  }
+}
+
+// Initialize language switcher
+(function(){
+  const savedLang = localStorage.getItem('selectedLanguage') || 'en';
+  
+  // Add click handlers to language buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', function(){
+      changeLanguage(this.getAttribute('data-lang'));
+    });
+  });
+  
+  // Set initial language
+  changeLanguage(savedLang);
+})();
 </script>
 </body>
 </html>
